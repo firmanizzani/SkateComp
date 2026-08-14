@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-void: #0A0710;
+  --color-primary: #7C3AED;
+  --color-primary-light: #A78BFA;
+  --color-primary-deep: #5B21B6;
+  --color-dark-bg: #120D1E;
+  --color-card: #1A1428;
+  --color-surface: #201930;
+  --color-border: #2D2440;
+  --color-text: #F1EEF8;
+  --color-muted: #8B7DAB;
+
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  background-color: #0A0710;
+  color: #F1EEF8;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #120D1E;
+}
+::-webkit-scrollbar-thumb {
+  background: #2D2440;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #7C3AED;
+}
