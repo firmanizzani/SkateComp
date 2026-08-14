@@ -16,7 +16,7 @@ import PengaturanAkunPage from './pages/PengaturanAkunPage';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/Lomba-InlineSkate">
       <AuthProvider>
         <Routes>
           {/* Public */}
