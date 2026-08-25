@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { getPendaftaran, savePendaftaran, getUsers, saveUsers, formatRupiah } from '../lib/data';
+import { getPendaftaran, savePendaftaran, getUsers, formatRupiah } from '../lib/data';
 import type { Pendaftaran, User } from '../types';
 import { Users, FileText, Check, X, ShieldAlert, Award } from 'lucide-react';
 

@@ -24,9 +24,10 @@ export default function InformasiLombaPage() {
       setLoading(true);
       try {
         const res = await apiFetch('/api/lomba/jenis');
-        setLombaList(res || []);
-      } catch (err: any) {
-        setError(err.message || 'Gagal memuat informasi lomba');
+        const data = await res.json();
+        setLombaList(data?.data || []);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Gagal memuat informasi lomba');
       } finally {
         setLoading(false);
       }

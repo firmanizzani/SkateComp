@@ -416,7 +416,7 @@ export default function PendaftaranPage() {
   const [error, setError] = useState('');
 
   const availableKategori = user
-    ? [getKategoriFromProfile(user.jenisKelamin, user.tanggalLahir)]
+    ? [getKategoriFromProfile(user.jenisKelamin ?? '', user.tanggalLahir ?? '')]
     : [];
 
   const selectedLomba = LOMBA_LIST.filter(l => selectedLombaIds.includes(l.id));

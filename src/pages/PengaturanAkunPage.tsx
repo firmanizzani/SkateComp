@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 
 export default function PengaturanAkunPage() {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const [form, setForm] = useState({ oldPass: '', newPass: '', confirmPass: '' });
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);

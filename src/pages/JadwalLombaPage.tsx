@@ -29,9 +29,10 @@ export default function JadwalLombaPage() {
       setError('');
       try {
         const res = await apiFetch('/api/lomba/jadwal');
-        setJadwalList(res || []);
-      } catch (err: any) {
-        setError(err.message || 'Gagal memuat jadwal lomba');
+        const data = await res.json();
+        setJadwalList(data?.data || []);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Gagal memuat jadwal lomba');
       } finally {
         setLoading(false);
       }

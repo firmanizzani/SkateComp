@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { getHasil, getUsers, getPendaftaran } from '../lib/data';
 import type { HasilLomba, User, Pendaftaran } from '../types';
-import { Trophy, Award } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
 export default function AdminRekapPage() {
   const [hasilList, setHasilList] = useState<HasilLomba[]>([]);

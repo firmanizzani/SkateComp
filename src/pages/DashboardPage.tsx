@@ -54,11 +54,14 @@ export default function DashboardPage() {
           apiFetch('/api/lomba/jadwal'),
           apiFetch('/api/penilaian')
         ]);
-        setPendaftaranList(pendaftaranRes || []);
-        setJadwalList(jadwalRes || []);
-        setHasilList(hasilRes || []);
-      } catch (err: any) {
-        setError(err.message || 'Terjadi kesalahan saat memuat data');
+        const pendaftaranData = await pendaftaranRes.json();
+        const jadwalData = await jadwalRes.json();
+        const hasilData = await hasilRes.json();
+        setPendaftaranList(pendaftaranData?.data || []);
+        setJadwalList(jadwalData?.data || []);
+        setHasilList(hasilData?.data || []);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat memuat data');
       } finally {
         setLoading(false);
       }
