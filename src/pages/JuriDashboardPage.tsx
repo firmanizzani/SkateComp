@@ -12,6 +12,8 @@ export default function JuriDashboardPage() {
   const [selectedSub, setSelectedSub] = useState<Pendaftaran | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filterLomba, setFilterLomba] = useState('Semua');
+  const [filterKategori, setFilterKategori] = useState('Semua');
   
   // Score form inputs
   const [aspek1, setAspek1] = useState('');
@@ -147,6 +149,15 @@ export default function JuriDashboardPage() {
     return found ? found.nilaiAkhir : '-';
   };
 
+  const uniqueLomba = Array.from(new Set(pendaftaranList.map(p => p.lomba))).filter(Boolean);
+  const uniqueKategori = Array.from(new Set(pendaftaranList.map(p => p.kategori))).filter(Boolean);
+
+  const filteredList = pendaftaranList.filter(p => {
+    const matchLomba = filterLomba === 'Semua' || p.lomba === filterLomba;
+    const matchKategori = filterKategori === 'Semua' || p.kategori === filterKategori;
+    return matchLomba && matchKategori;
+  });
+
   return (
     <Layout title="Dashboard Juri">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -159,8 +170,40 @@ export default function JuriDashboardPage() {
               Daftar Peserta untuk Dinilai
             </h2>
             <p className="text-sm mb-6" style={{ color: '#8B7DAB' }}>
-              Pilih peserta dengan status "Terverifikasi" untuk mulai memberikan penilaian aspek.
+              Saring peserta berdasarkan cabang lomba dan kategori, lalu pilih peserta terverifikasi untuk dinilai.
             </p>
+
+            {/* Filter Dropdowns */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex-1">
+                <label className="block text-xs mb-1.5 font-medium" style={{ color: '#8B7DAB' }}>Cabang Lomba</label>
+                <select
+                  value={filterLomba}
+                  onChange={e => setFilterLomba(e.target.value)}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
+                  style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
+                >
+                  <option value="Semua">Semua Cabang Lomba</option>
+                  {uniqueLomba.map(l => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs mb-1.5 font-medium" style={{ color: '#8B7DAB' }}>Kategori</label>
+                <select
+                  value={filterKategori}
+                  onChange={e => setFilterKategori(e.target.value)}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
+                  style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
+                >
+                  <option value="Semua">Semua Kategori</option>
+                  {uniqueKategori.map(k => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -187,8 +230,12 @@ export default function JuriDashboardPage() {
                     <tr>
                       <td colSpan={6} className="py-8 text-center text-gray-500">Belum ada pendaftaran terverifikasi</td>
                     </tr>
+                  ) : filteredList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-gray-500">Tidak ada peserta yang cocok dengan filter aktif</td>
+                    </tr>
                   ) : (
-                    pendaftaranList.map((p) => (
+                    filteredList.map((p) => (
                       <tr key={p.id} className="hover:bg-white/2 transition-colors">
                         <td className="py-4 pl-2 font-mono text-xs">{p.bibNumber || p.id}</td>
                         <td className="py-4 font-semibold text-white">{p.lomba}</td>
