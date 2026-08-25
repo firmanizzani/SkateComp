@@ -13,11 +13,9 @@ dist
 dist-ssr
 *.local
 
-# Monorepo specific paths
-skatecomp/node_modules/
-skatecomp/dist/
-backend/node_modules/
-backend/.env
+# Monorepo specific paths (Cleaned up)
+.env
+.env*.local
 
 # Do not push database SQL files (as requested)
 *.sql
