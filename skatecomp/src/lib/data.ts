@@ -152,7 +152,19 @@ export function formatRupiah(amount: number): string {
 // ─── SEED DEMO DATA ──────────────────────────────────────────────
 export function seedDemoData() {
   const users = getUsers();
-  if (users.length > 0) return; // already seeded
+  if (users.length > 0) {
+    // Migrate existing users to have role if missing (for dev safety)
+    let dirty = false;
+    const updatedUsers = users.map(u => {
+      if (!u.role) {
+        u.role = u.email.includes('admin.com') ? 'admin' : u.email.includes('juri.com') ? 'juri' : 'peserta';
+        dirty = true;
+      }
+      return u;
+    });
+    if (dirty) saveUsers(updatedUsers);
+    return;
+  }
 
   const demoUser: User = {
     id: 'demo-user-1',
@@ -163,10 +175,90 @@ export function seedDemoData() {
     jenisKelamin: 'Laki-laki',
     alamat: 'Jl. Asia Afrika No.10',
     password: 'password123',
+    role: 'peserta',
     bibNumber: '001',
     createdAt: new Date().toISOString(),
   };
-  saveUsers([demoUser]);
+
+  const adminUsers: User[] = [
+    {
+      id: 'AD001',
+      namaLengkap: 'Rangga Wibowo',
+      email: 'rangga@admin.com',
+      noHp: '081234567890',
+      tanggalLahir: '1990-01-01',
+      jenisKelamin: 'Laki-laki',
+      alamat: 'Kantor Admin',
+      password: 'Bagusadmin001',
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'AD002',
+      namaLengkap: 'Sinta Marlina',
+      email: 'sinta@admin.com',
+      noHp: '081234567891',
+      tanggalLahir: '1992-02-02',
+      jenisKelamin: 'Perempuan',
+      alamat: 'Kantor Admin',
+      password: 'bagusadmin002',
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'AD003',
+      namaLengkap: 'Yusuf Hakim',
+      email: 'yusuf@admin.com',
+      noHp: '081234567892',
+      tanggalLahir: '1988-08-08',
+      jenisKelamin: 'Laki-laki',
+      alamat: 'Kantor Admin',
+      password: 'bagusadmin003',
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+    }
+  ];
+
+  const juriUsers: User[] = [
+    {
+      id: 'JR001',
+      namaLengkap: 'Andi Pratama',
+      email: 'andi@juri.com',
+      noHp: '081111111111',
+      tanggalLahir: '1985-05-05',
+      jenisKelamin: 'Laki-laki',
+      alamat: 'Arena Lomba',
+      password: 'Juricepat001',
+      role: 'juri',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'JR002',
+      namaLengkap: 'Budi Santoso',
+      email: 'budi@juri.com',
+      noHp: '082222222222',
+      tanggalLahir: '1986-06-06',
+      jenisKelamin: 'Laki-laki',
+      alamat: 'Arena Lomba',
+      password: 'Jurilambat002',
+      role: 'juri',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'JR003',
+      namaLengkap: 'Citra Lestari',
+      email: 'citra@juri.com',
+      noHp: '083333333333',
+      tanggalLahir: '1989-07-07',
+      jenisKelamin: 'Perempuan',
+      alamat: 'Arena Lomba',
+      password: 'Juripelan003',
+      role: 'juri',
+      createdAt: new Date().toISOString(),
+    }
+  ];
+
+  saveUsers([demoUser, ...adminUsers, ...juriUsers]);
 
   const demoHasil: HasilLomba[] = [
     { id: 'h1', userId: 'demo-user-1', pendaftaranId: 'PIN-2025-0001', lomba: 'Speed Slalom', kategori: 'Junior Men U12', nilaiAkhir: 85.33, peringkat: 2, status: 'Selesai' },

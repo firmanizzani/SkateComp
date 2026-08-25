@@ -7,10 +7,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Node modules / builds
 node_modules
 dist
 dist-ssr
 *.local
+
+# Monorepo specific paths
+skatecomp/node_modules/
+skatecomp/dist/
+backend/node_modules/
+backend/.env
+
+# Do not push database SQL files (as requested)
+*.sql
 
 # Editor directories and files
 .vscode/*

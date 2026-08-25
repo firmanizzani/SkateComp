@@ -21,8 +21,17 @@ export default function LoginPage() {
     setLoading(true);
     setTimeout(() => {
       const result = login(email, password);
-      if (result.ok) navigate('/dashboard');
-      else setError(result.error || 'Login gagal');
+      if (result.ok && result.user) {
+        if (result.user.role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (result.user.role === 'juri') {
+          navigate('/juri/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
+      } else {
+        setError(result.error || 'Login gagal');
+      }
       setLoading(false);
     }, 500);
   };
