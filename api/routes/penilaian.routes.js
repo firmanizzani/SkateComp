@@ -3,11 +3,17 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const { verifyToken, requireRole } = require('../middleware/auth.middleware');
 
-// GET /api/penilaian - Juri: get all scores (all or by juri)
-router.get('/', verifyToken, requireRole('juri', 'admin'), async (req, res) => {
+// GET /api/penilaian - Get scores (Filtered by role: juri gets their own, admin gets all, peserta gets their own)
+router.get('/', verifyToken, async (req, res) => {
   try {
     let where = {};
-    if (req.user.role === 'juri') where.id_juri = req.user.id;
+    if (req.user.role === 'juri') {
+      where.id_juri = req.user.id;
+    } else if (req.user.role === 'peserta') {
+      where.pendaftaran = {
+        id_peserta: req.user.id
+      };
+    }
 
     const data = await prisma.penilaian.findMany({
       where,

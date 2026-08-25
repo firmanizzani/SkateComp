@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Layout from '../components/Layout';
-import { formatRupiah } from '../lib/data';
+import { formatRupiah, LOMBA_LIST } from '../lib/data';
 import { apiFetch } from '../lib/api';
 
 interface Jadwal {
@@ -139,9 +139,9 @@ export default function DetailLombaPage() {
             </div>
           </div>
 
-          {lombaInfo.deskripsi && (
+          {(lombaInfo.deskripsi || LOMBA_LIST.find(l => l.nama === lombaInfo.nama_lomba)?.deskripsiPanjang || LOMBA_LIST.find(l => l.nama === lombaInfo.nama_lomba)?.deskripsi) && (
             <p className="text-sm mb-6" style={{ color: '#C4B5D0', lineHeight: 1.7 }}>
-              {lombaInfo.deskripsi}
+              {lombaInfo.deskripsi || LOMBA_LIST.find(l => l.nama === lombaInfo.nama_lomba)?.deskripsiPanjang || LOMBA_LIST.find(l => l.nama === lombaInfo.nama_lomba)?.deskripsi}
             </p>
           )}
 

@@ -5,16 +5,6 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
 
-interface Pendaftaran {
-  id_pendaftaran: string | number;
-  jadwal: {
-    jenisLomba: { nama_lomba: string };
-    kategori: { nama_kategori: string };
-  };
-  tanggal_daftar: string;
-  status_pendaftaran: string;
-}
-
 interface Jadwal {
   id_jadwal: string | number;
   tanggal_lomba: string;
@@ -22,6 +12,16 @@ interface Jadwal {
   kategori: { nama_kategori: string };
   jam_mulai: string;
   lokasi: string;
+}
+
+interface Pendaftaran {
+  id_pendaftaran: string | number;
+  jadwal: Jadwal;
+  tanggal_daftar: string;
+  status_pendaftaran: string;
+  pemenang?: {
+    peringkat: 'Juara_1' | 'Juara_2' | 'Juara_3';
+  } | null;
 }
 
 interface Hasil {
@@ -69,14 +69,29 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
+  const pemenangList = pendaftaranList.map(p => p.pemenang).filter(Boolean);
+  const hasJuara1 = pemenangList.some(p => p?.peringkat === 'Juara_1');
+  const hasJuara2 = pemenangList.some(p => p?.peringkat === 'Juara_2');
+  const hasJuara3 = pemenangList.some(p => p?.peringkat === 'Juara_3');
+
+  let prestasiTerbaik = '-';
+  if (hasJuara1) prestasiTerbaik = 'Juara 1';
+  else if (hasJuara2) prestasiTerbaik = 'Juara 2';
+  else if (hasJuara3) prestasiTerbaik = 'Juara 3';
+  else if (hasilList.length > 0) prestasiTerbaik = 'Selesai';
+
   const statsItems = [
     { label: 'Pendaftaran\nLomba', value: pendaftaranList.length, color: '#A78BFA' },
     { label: 'Pembayaran\nLunas', value: pendaftaranList.filter(p => p.status_pendaftaran !== 'Menunggu').length, color: '#A78BFA' },
     { label: 'Verifikasi\nTerverifikasi', value: pendaftaranList.filter(p => p.status_pendaftaran === 'Terverifikasi').length, color: '#A78BFA' },
-    { label: 'Prestasi\nTerbaik', value: hasilList.length > 0 ? 'Ada' : '-', color: '#A78BFA' },
+    { label: 'Prestasi\nTerbaik', value: prestasiTerbaik, color: '#A78BFA' },
   ];
 
-  const jadwalTerdekat = jadwalList.slice(0, 3);
+  // Filter jadwalList to only include schedules the user has registered for
+  const registeredJadwalIds = new Set(pendaftaranList.map(p => String(p.jadwal?.id_jadwal)));
+  const jadwalTerdekat = jadwalList
+    .filter(j => registeredJadwalIds.has(String(j.id_jadwal)))
+    .slice(0, 3);
 
   if (loading) {
     return (
