@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Info } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { getPendaftaran } from '../lib/data';
-import type { Pendaftaran } from '../types';
+import { apiFetch } from '../lib/api';
 
 type Filter = 'Semua' | 'Terverifikasi' | 'Menunggu' | 'Ditolak';
 
@@ -25,10 +24,31 @@ function StatusBadge({ status }: { status: string }) {
 export default function RiwayatDaftarPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('Semua');
-  const [detail, setDetail] = useState<Pendaftaran | null>(null);
+  const [detail, setDetail] = useState<any | null>(null);
+  const [pendaftaranList, setPendaftaranList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const allPendaftaran = getPendaftaran(user?.id);
-  const filtered = filter === 'Semua' ? allPendaftaran : allPendaftaran.filter(p => p.status === filter);
+  useEffect(() => {
+    const fetchPendaftaran = async () => {
+      try {
+        const res = await apiFetch('/api/pendaftaran');
+        const data = await res.json();
+        if (data.success) {
+          setPendaftaranList(data.data || data.pendaftaran || []);
+        } else {
+          setError(data.message || 'Gagal mengambil riwayat daftar');
+        }
+      } catch (err: any) {
+        setError('Gagal menghubungi server');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPendaftaran();
+  }, []);
+
+  const filtered = filter === 'Semua' ? pendaftaranList : pendaftaranList.filter(p => p.status_pendaftaran === filter);
 
   const filters: Filter[] = ['Semua', 'Terverifikasi', 'Menunggu', 'Ditolak'];
 
@@ -39,13 +59,13 @@ export default function RiwayatDaftarPage() {
 
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
             <h2 className="text-xl font-bold text-white">Riwayat Daftar</h2>
-            {user?.bibNumber && (
+            {(user?.nomor_bib || user?.bibNumber) && (
               <div className="rounded-xl p-4 text-right" style={{ background: '#1A1428', border: '1px solid #2D2440', minWidth: 200 }}>
                 <div className="flex items-center justify-end gap-1 mb-1">
                   <p className="text-xs" style={{ color: '#8B7DAB' }}>Nomor BIB Anda</p>
                   <Info size={12} style={{ color: '#8B7DAB' }} />
                 </div>
-                <p className="text-3xl font-bold" style={{ color: '#A78BFA', fontFamily: 'Space Mono, monospace' }}>{user.bibNumber}</p>
+                <p className="text-3xl font-bold" style={{ color: '#A78BFA', fontFamily: 'Space Mono, monospace' }}>{user?.nomor_bib || user?.bibNumber}</p>
                 <p className="text-xs mt-1" style={{ color: '#8B7DAB' }}>Nomor BIB Bersifat unik dan digunakan untuk semua jenis lomba yang diikuti</p>
               </div>
             )}
@@ -68,7 +88,11 @@ export default function RiwayatDaftarPage() {
             ))}
           </div>
 
+          {loading && <p className="text-white text-center py-4">Memuat data...</p>}
+          {error && <p className="text-red-500 text-center py-4">{error}</p>}
+
           {/* Table */}
+          {!loading && !error && (
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #2D2440' }}>
             <table className="w-full text-sm">
               <thead>
@@ -87,18 +111,20 @@ export default function RiwayatDaftarPage() {
                   </tr>
                 ) : filtered.map((p, i) => (
                   <motion.tr
-                    key={p.id}
+                    key={p.id_pendaftaran}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.04 }}
                     style={{ borderBottom: '1px solid #2D2440' }}
                   >
-                    <td className="px-4 py-3 font-medium" style={{ color: '#A78BFA', fontFamily: 'Space Mono, monospace', fontSize: 12 }}>{p.id}</td>
-                    <td className="px-4 py-3 text-white">{p.lomba}</td>
-                    <td className="px-4 py-3 hidden sm:table-cell" style={{ color: '#8B7DAB' }}>{p.kategori}</td>
-                    <td className="px-4 py-3 hidden md:table-cell" style={{ color: '#8B7DAB' }}>{p.tanggalDaftar}</td>
+                    <td className="px-4 py-3 font-medium" style={{ color: '#A78BFA', fontFamily: 'Space Mono, monospace', fontSize: 12 }}>{p.id_pendaftaran}</td>
+                    <td className="px-4 py-3 text-white">{p.jadwal?.jenisLomba?.nama_lomba}</td>
+                    <td className="px-4 py-3 hidden sm:table-cell" style={{ color: '#8B7DAB' }}>{p.jadwal?.kategori?.nama_kategori}</td>
+                    <td className="px-4 py-3 hidden md:table-cell" style={{ color: '#8B7DAB' }}>
+                      {new Date(p.tanggal_daftar).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={p.status} />
+                      <StatusBadge status={p.status_pendaftaran} />
                     </td>
                     <td className="px-4 py-3">
                       <button
@@ -114,13 +140,14 @@ export default function RiwayatDaftarPage() {
               </tbody>
             </table>
           </div>
+          )}
 
           {/* BIB info */}
           <div className="flex items-center gap-2 mt-4 px-4 py-3 rounded-xl text-sm" style={{ background: '#1A1428', border: '1px solid #2D2440' }}>
             <Info size={15} style={{ color: '#A78BFA' }} className="flex-shrink-0" />
             <p style={{ color: '#8B7DAB' }}>
               Nomor BIB hanya dibuat setelah pembayaran pertama terverifikasi. Nomor BIB Anda saat ini:{' '}
-              <strong style={{ color: '#A78BFA' }}>{user?.bibNumber || 'Belum ada'}</strong>
+              <strong style={{ color: '#A78BFA' }}>{user?.nomor_bib || user?.bibNumber || 'Belum ada'}</strong>
             </p>
           </div>
         </div>
@@ -138,14 +165,14 @@ export default function RiwayatDaftarPage() {
           >
             <h3 className="text-base font-bold text-white mb-4">Detail Pendaftaran</h3>
             {[
-              ['ID Pendaftaran', detail.id],
-              ['Lomba', detail.lomba],
-              ['Kategori', detail.kategori],
-              ['Tanggal Daftar', detail.tanggalDaftar],
-              ['Tanggal Lomba', detail.tanggalLomba],
-              ['Lokasi', detail.lokasi],
-              ['Status', detail.status],
-              ['Metode Bayar', detail.metodePembayaran || '-'],
+              ['ID Pendaftaran', detail.id_pendaftaran],
+              ['Lomba', detail.jadwal?.jenisLomba?.nama_lomba],
+              ['Kategori', detail.jadwal?.kategori?.nama_kategori],
+              ['Tanggal Daftar', new Date(detail.tanggal_daftar).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })],
+              ['Tanggal Lomba', new Date(detail.jadwal?.tanggal_lomba).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })],
+              ['Lokasi', detail.jadwal?.lokasi],
+              ['Status', detail.status_pendaftaran],
+              ['Metode Bayar', detail.metode_pembayaran || 'QRIS / Transfer'],
             ].map(([label, val]) => (
               <div key={label} className="flex justify-between py-2 text-sm" style={{ borderBottom: '1px solid #2D2440' }}>
                 <span style={{ color: '#8B7DAB' }}>{label}</span>

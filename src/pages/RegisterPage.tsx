@@ -26,7 +26,7 @@ export default function RegisterPage() {
 
   const set = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!form.namaLengkap || !form.email || !form.noHp || !form.tanggalLahir || !form.password) {
@@ -42,20 +42,18 @@ export default function RegisterPage() {
       setError('Anda harus menyetujui syarat & ketentuan'); return;
     }
     setLoading(true);
-    setTimeout(() => {
-      const result = register({
-        namaLengkap: form.namaLengkap,
-        email: form.email,
-        noHp: form.noHp,
-        tanggalLahir: form.tanggalLahir,
-        jenisKelamin: form.jenisKelamin,
-        alamat: form.alamat || '-',
-        password: form.password,
-      });
-      if (result.ok) navigate('/dashboard');
-      else setError(result.error || 'Registrasi gagal');
-      setLoading(false);
-    }, 500);
+    const result = await register({
+      nama_peserta: form.namaLengkap,
+      email: form.email,
+      password: form.password,
+      tanggal_lahir: form.tanggalLahir,
+      jenis_kelamin: form.jenisKelamin === 'Laki-laki' ? 'L' : 'P',
+      alamat: form.alamat || '-',
+      no_hp: form.noHp,
+    });
+    if (result.ok) navigate('/dashboard');
+    else setError(result.error || 'Registrasi gagal');
+    setLoading(false);
   };
 
   return (

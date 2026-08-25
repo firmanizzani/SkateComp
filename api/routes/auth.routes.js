@@ -173,4 +173,33 @@ router.get('/me', verifyToken, async (req, res) => {
   }
 });
 
+// POST /api/auth/change-password
+router.post('/change-password', verifyToken, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const { id, role } = req.user;
+    if (!oldPassword || !newPassword) return res.status(400).json({ success: false, message: 'Field wajib diisi.' });
+    if (newPassword.length < 8) return res.status(400).json({ success: false, message: 'Password baru minimal 8 karakter.' });
+    
+    let userRecord = null;
+    if (role === 'peserta') userRecord = await prisma.peserta.findUnique({ where: { id_peserta: id } });
+    else if (role === 'juri') userRecord = await prisma.juri.findUnique({ where: { id_juri: id } });
+    else if (role === 'admin') userRecord = await prisma.admin.findUnique({ where: { id_admin: id } });
+    
+    if (!userRecord) return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
+    
+    const valid = await bcrypt.compare(oldPassword, userRecord.password);
+    if (!valid) return res.status(401).json({ success: false, message: 'Password lama tidak sesuai.' });
+    
+    const hashed = await bcrypt.hash(newPassword, 10);
+    if (role === 'peserta') await prisma.peserta.update({ where: { id_peserta: id }, data: { password: hashed } });
+    else if (role === 'juri') await prisma.juri.update({ where: { id_juri: id }, data: { password: hashed } });
+    else if (role === 'admin') await prisma.admin.update({ where: { id_admin: id }, data: { password: hashed } });
+    
+    return res.json({ success: true, message: 'Password berhasil diubah.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
