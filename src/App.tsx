@@ -25,7 +25,7 @@ import JuriDashboardPage from './pages/JuriDashboardPage';
 
 export default function App() {
   return (
-    <BrowserRouter basename="/Lomba-InlineSkate">
+    <BrowserRouter basename={window.location.pathname.startsWith('/Lomba-InlineSkate') ? '/Lomba-InlineSkate' : ''}>
       <AuthProvider>
         <Routes>
           {/* Public */}
