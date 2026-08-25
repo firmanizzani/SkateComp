@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { getUsers, saveUsers } from '../lib/data';
 import type { User } from '../types';
-import { ShieldCheck, Mail, UserPlus, Phone } from 'lucide-react';
+import { ShieldCheck, UserPlus } from 'lucide-react';
 
 export default function AdminJuriPage() {
   const [juriList, setJuriList] = useState<User[]>([]);
