@@ -7,6 +7,7 @@ export interface User {
   jenisKelamin: 'Laki-laki' | 'Perempuan';
   alamat: string;
   password: string;
+  role: 'admin' | 'juri' | 'peserta';
   foto?: string;
   bibNumber?: string;
   createdAt: string;

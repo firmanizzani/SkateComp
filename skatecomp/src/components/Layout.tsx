@@ -3,34 +3,63 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, User, Info, ClipboardList, BookOpen,
-  Trophy, Settings, LogOut, Menu, X, Home
+  Trophy, Settings, LogOut, Menu, X, Home, Users, UserCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
-
-const NAV_ITEMS = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Profil', path: '/profil', icon: User },
-  { label: 'Informasi Lomba', path: '/informasi-lomba', icon: Info },
-  { label: 'Pendaftaran', path: '/pendaftaran', icon: ClipboardList },
-  { label: 'Riwayat Daftar', path: '/riwayat-daftar', icon: BookOpen },
-  { label: 'Hasil Perlombaan', path: '/hasil-perlombaan', icon: Trophy },
-  { label: 'Pengaturan Akun', path: '/pengaturan-akun', icon: Settings },
-];
-
-const BOTTOM_NAV = [
-  { label: 'Home', path: '/dashboard', icon: Home },
-  { label: 'Lomba', path: '/informasi-lomba', icon: Info },
-  { label: 'Daftar', path: '/pendaftaran', icon: ClipboardList },
-  { label: 'Riwayat', path: '/riwayat-daftar', icon: BookOpen },
-  { label: 'Profil', path: '/profil', icon: User },
-];
 
 export default function Layout({ children, title }: { children: React.ReactNode; title: string }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Dynamic Navigation based on Role
+  let navItems = [
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Profil', path: '/profil', icon: User },
+    { label: 'Informasi Lomba', path: '/informasi-lomba', icon: Info },
+    { label: 'Pendaftaran', path: '/pendaftaran', icon: ClipboardList },
+    { label: 'Riwayat Daftar', path: '/riwayat-daftar', icon: BookOpen },
+    { label: 'Hasil Perlombaan', path: '/hasil-perlombaan', icon: Trophy },
+    { label: 'Pengaturan Akun', path: '/pengaturan-akun', icon: Settings },
+  ];
+
+  let bottomNav = [
+    { label: 'Home', path: '/dashboard', icon: Home },
+    { label: 'Lomba', path: '/informasi-lomba', icon: Info },
+    { label: 'Daftar', path: '/pendaftaran', icon: ClipboardList },
+    { label: 'Riwayat', path: '/riwayat-daftar', icon: BookOpen },
+    { label: 'Profil', path: '/profil', icon: User },
+  ];
+
+  if (user?.role === 'admin') {
+    navItems = [
+      { label: 'Dashboard Admin', path: '/admin/dashboard', icon: LayoutDashboard },
+      { label: 'Kelola Peserta', path: '/admin/peserta', icon: Users },
+      { label: 'Kelola Juri', path: '/admin/juri', icon: UserCheck },
+      { label: 'Rekap Nilai', path: '/admin/rekap', icon: Trophy },
+      { label: 'Pengaturan Akun', path: '/pengaturan-akun', icon: Settings },
+    ];
+
+    bottomNav = [
+      { label: 'Home', path: '/admin/dashboard', icon: Home },
+      { label: 'Peserta', path: '/admin/peserta', icon: Users },
+      { label: 'Juri', path: '/admin/juri', icon: UserCheck },
+      { label: 'Rekap', path: '/admin/rekap', icon: Trophy },
+    ];
+  } else if (user?.role === 'juri') {
+    navItems = [
+      { label: 'Dashboard Juri', path: '/juri/dashboard', icon: LayoutDashboard },
+      { label: 'Pengaturan Akun', path: '/pengaturan-akun', icon: Settings },
+    ];
+
+    bottomNav = [
+      { label: 'Home', path: '/juri/dashboard', icon: Home },
+      { label: 'Profil', path: '/profil', icon: User },
+      { label: 'Settings', path: '/pengaturan-akun', icon: Settings },
+    ];
+  }
 
   const handleLogout = () => {
     logout();
@@ -58,7 +87,7 @@ export default function Layout({ children, title }: { children: React.ReactNode;
             style={{ background: user?.foto ? 'transparent' : '#7C3AED' }}
           >
             {user?.foto ? (
-              <img src={user.foto} alt="avatar" className="w-full h-full object-cover" />
+               <img src={user.foto} alt="avatar" className="w-full h-full object-cover" />
             ) : avatarInitial}
           </div>
           <span className="text-sm font-medium text-white truncate">{user?.namaLengkap || 'User'}</span>
@@ -67,7 +96,7 @@ export default function Layout({ children, title }: { children: React.ReactNode;
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5">
-        {NAV_ITEMS.map(({ label, path, icon: Icon }) => (
+        {navItems.map(({ label, path, icon: Icon }) => (
           <Link
             key={path}
             to={path}
@@ -169,7 +198,7 @@ export default function Layout({ children, title }: { children: React.ReactNode;
           className="md:hidden flex items-center justify-around px-2 py-2 flex-shrink-0"
           style={{ background: '#120D1E', borderTop: '1px solid #2D2440' }}
         >
-          {BOTTOM_NAV.map(({ label, path, icon: Icon }) => (
+          {bottomNav.map(({ label, path, icon: Icon }) => (
             <Link
               key={path}
               to={path}

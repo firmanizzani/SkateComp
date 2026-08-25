@@ -4,8 +4,8 @@ import { getCurrentUser, setCurrentUser, getUsers, saveUsers, seedDemoData } fro
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => { ok: boolean; error?: string };
-  register: (data: Omit<User, 'id' | 'createdAt' | 'bibNumber'>) => { ok: boolean; error?: string };
+  login: (email: string, password: string) => { ok: boolean; error?: string; user?: User };
+  register: (data: Omit<User, 'id' | 'createdAt' | 'bibNumber' | 'role'>) => { ok: boolean; error?: string };
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
 }
@@ -27,10 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!found) return { ok: false, error: 'Email atau password salah' };
     setCurrentUser(found);
     setUser(found);
-    return { ok: true };
+    return { ok: true, user: found };
   }, []);
 
-  const register = useCallback((data: Omit<User, 'id' | 'createdAt' | 'bibNumber'>) => {
+  const register = useCallback((data: Omit<User, 'id' | 'createdAt' | 'bibNumber' | 'role'>) => {
     const users = getUsers();
     if (users.find(u => u.email.toLowerCase() === data.email.toLowerCase())) {
       return { ok: false, error: 'Email sudah terdaftar' };
@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const newUser: User = {
       ...data,
       id: `user-${Date.now()}`,
+      role: 'peserta',
       createdAt: new Date().toISOString(),
     };
     saveUsers([...users, newUser]);
