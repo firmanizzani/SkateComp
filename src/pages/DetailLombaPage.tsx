@@ -1,14 +1,74 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Layout from '../components/Layout';
-import { LOMBA_LIST, formatRupiah } from '../lib/data';
+import { formatRupiah } from '../lib/data';
+import { apiFetch } from '../lib/api';
+
+interface Jadwal {
+  id_jadwal: string | number;
+  tanggal_lomba: string;
+  jenisLomba: { 
+    id_jenis_lomba: string | number;
+    nama_lomba: string;
+    deskripsi?: string;
+    biaya_pendaftaran: number;
+  };
+  kategori: { nama_kategori: string };
+  jam_mulai: string;
+  lokasi: string;
+}
 
 export default function DetailLombaPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const lomba = LOMBA_LIST.find(l => l.id === id);
+  const [jadwalList, setJadwalList] = useState<Jadwal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  if (!lomba) return (
+  useEffect(() => {
+    const fetchJadwal = async () => {
+      setLoading(true);
+      try {
+        const res = await apiFetch('/api/lomba/jadwal');
+        setJadwalList(res || []);
+      } catch (err: any) {
+        setError(err.message || 'Gagal memuat jadwal lomba');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJadwal();
+  }, []);
+
+  const relatedJadwal = jadwalList.filter(j => 
+    String(j.jenisLomba?.id_jenis_lomba) === String(id) || 
+    j.jenisLomba?.nama_lomba === id
+  );
+
+  const lombaInfo = relatedJadwal.length > 0 ? relatedJadwal[0].jenisLomba : null;
+
+  if (loading) {
+    return (
+      <Layout title="Detail Lomba">
+        <div className="flex items-center justify-center h-64">
+          <p style={{ color: '#8B7DAB' }}>Loading...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout title="Detail Lomba">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-red-500">{error}</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!lombaInfo) return (
     <Layout title="Detail Lomba">
       <div className="flex items-center justify-center h-64">
         <p style={{ color: '#8B7DAB' }}>Lomba tidak ditemukan.</p>
@@ -19,13 +79,13 @@ export default function DetailLombaPage() {
   const LombaIllustration = () => (
     <div className="w-24 h-24 rounded-xl flex items-center justify-center" style={{ background: '#2D2440' }}>
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-        {lomba.nama === 'Classic Slalom' && (
+        {lombaInfo.nama_lomba === 'Classic Slalom' && (
           <>
             <polygon points="24,4 34,22 14,22" fill="#7C3AED" opacity="0.9"/>
             <circle cx="24" cy="34" r="10" fill="#5B21B6" opacity="0.7"/>
           </>
         )}
-        {lomba.nama === 'Freestyle Slide' && (
+        {lombaInfo.nama_lomba === 'Freestyle Slide' && (
           <>
             <circle cx="30" cy="10" r="5" fill="#A78BFA"/>
             <path d="M8 38 C8 38, 16 24, 24 20 C28 18, 32 20, 34 24 L38 36" stroke="#7C3AED" strokeWidth="3" strokeLinecap="round" fill="none"/>
@@ -33,14 +93,14 @@ export default function DetailLombaPage() {
             <circle cx="36" cy="40" r="3" fill="#7C3AED"/>
           </>
         )}
-        {lomba.nama === 'Speed Slalom' && (
+        {lombaInfo.nama_lomba === 'Speed Slalom' && (
           <>
             <circle cx="24" cy="24" r="18" stroke="#7C3AED" strokeWidth="3" fill="none"/>
             <circle cx="24" cy="24" r="11" fill="#5B21B6" opacity="0.4"/>
             <path d="M24 12 L24 24 L34 24" stroke="#A78BFA" strokeWidth="3" strokeLinecap="round"/>
           </>
         )}
-        {lomba.nama === 'Skate Race' && (
+        {lombaInfo.nama_lomba === 'Skate Race' && (
           <>
             <rect x="4" y="20" width="40" height="8" rx="2" fill="#7C3AED" opacity="0.4"/>
             <path d="M4 20 L24 6 L44 20" stroke="#7C3AED" strokeWidth="2.5" fill="none"/>
@@ -51,6 +111,10 @@ export default function DetailLombaPage() {
       </svg>
     </div>
   );
+
+  // Kategori unik dari jadwal terkait
+  const kategoriUnik = [...new Set(relatedJadwal.map(j => j.kategori?.nama_kategori))];
+  const lokasiUnik = [...new Set(relatedJadwal.map(j => j.lokasi))];
 
   return (
     <Layout title="Detail Lomba">
@@ -70,32 +134,41 @@ export default function DetailLombaPage() {
             <LombaIllustration />
             <div>
               <p className="text-xs mb-1" style={{ color: '#8B7DAB' }}>Detail Lomba</p>
-              <h2 className="text-2xl font-bold text-white">{lomba.nama}</h2>
+              <h2 className="text-2xl font-bold text-white">{lombaInfo.nama_lomba}</h2>
             </div>
           </div>
 
-          <p className="text-sm mb-6" style={{ color: '#C4B5D0', lineHeight: 1.7 }}>{lomba.deskripsiPanjang}</p>
+          {lombaInfo.deskripsi && (
+            <p className="text-sm mb-6" style={{ color: '#C4B5D0', lineHeight: 1.7 }}>
+              {lombaInfo.deskripsi}
+            </p>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <p className="text-sm font-medium text-white mb-2">Kategori yang tersedia:</p>
               <ul className="flex flex-col gap-1">
-                {lomba.kategori.map(k => (
+                {kategoriUnik.map(k => (
                   <li key={k} className="flex items-center gap-2 text-sm" style={{ color: '#C4B5D0' }}>
                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#7C3AED' }} />
                     {k}
                   </li>
                 ))}
+                {kategoriUnik.length === 0 && (
+                  <li className="text-sm" style={{ color: '#C4B5D0' }}>Belum ada kategori</li>
+                )}
               </ul>
             </div>
             <div className="flex flex-col gap-4">
               <div>
                 <p className="text-sm font-medium text-white mb-1">Biaya Pendaftaran</p>
-                <p className="text-base font-bold" style={{ color: '#F1EEF8' }}>{formatRupiah(lomba.biaya)}</p>
+                <p className="text-base font-bold" style={{ color: '#F1EEF8' }}>{formatRupiah(lombaInfo.biaya_pendaftaran)}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-white mb-1">Lokasi</p>
-                <p className="text-sm" style={{ color: '#C4B5D0' }}>{lomba.lokasi}</p>
+                <p className="text-sm" style={{ color: '#C4B5D0' }}>
+                  {lokasiUnik.join(', ') || 'Belum ditentukan'}
+                </p>
               </div>
             </div>
           </div>

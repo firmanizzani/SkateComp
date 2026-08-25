@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { getHasil } from '../lib/data';
+import { apiFetch } from '../lib/api';
 
 type Filter = 'Semua' | 'Sudah Dinilai' | 'Belum Dinilai';
 
@@ -11,14 +11,50 @@ const RANK_MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 export default function HasilPerlombaanPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('Semua');
+  const [hasilList, setHasilList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const allHasil = getHasil(user?.id);
+  useEffect(() => {
+    const fetchHasil = async () => {
+      try {
+        const res = await apiFetch('/api/penilaian');
+        const data = await res.json();
+        if (data.success) {
+          // Sort descending by nilai_akhir to calculate rank
+          const allHasil = data.data || data.penilaian || [];
+          allHasil.sort((a: any, b: any) => (b.nilai_akhir || 0) - (a.nilai_akhir || 0));
+          
+          // Add rank
+          const ranked = allHasil.map((h: any, i: number) => ({
+            ...h,
+            peringkat: i + 1,
+            lomba: h.pendaftaran?.jadwal?.jenisLomba?.nama_lomba || '-',
+            kategori: h.pendaftaran?.jadwal?.kategori?.nama_kategori || '-',
+            status: h.nilai_akhir !== null ? 'Selesai' : 'Belum'
+          }));
+          
+          // If the API returns all, we might need to filter by user.id if role is peserta
+          // Assuming backend handles it, but just in case, if the data contains id_peserta
+          setHasilList(ranked);
+        } else {
+          setError(data.message || 'Gagal mengambil hasil perlombaan');
+        }
+      } catch (err: any) {
+        setError('Gagal menghubungi server');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHasil();
+  }, [user]);
+
   const filtered =
     filter === 'Sudah Dinilai'
-      ? allHasil.filter(h => h.status === 'Selesai')
+      ? hasilList.filter(h => h.status === 'Selesai')
       : filter === 'Belum Dinilai'
-      ? allHasil.filter(h => h.status !== 'Selesai')
-      : allHasil;
+      ? hasilList.filter(h => h.status !== 'Selesai')
+      : hasilList;
 
   const filters: Filter[] = ['Semua', 'Sudah Dinilai', 'Belum Dinilai'];
 
@@ -45,7 +81,11 @@ export default function HasilPerlombaanPage() {
             ))}
           </div>
 
+          {loading && <p className="text-white text-center py-4">Memuat data...</p>}
+          {error && <p className="text-red-500 text-center py-4">{error}</p>}
+
           {/* Table */}
+          {!loading && !error && (
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #2D2440' }}>
             <table className="w-full text-sm">
               <thead>
@@ -64,7 +104,7 @@ export default function HasilPerlombaanPage() {
                   </tr>
                 ) : filtered.map((h, i) => (
                   <motion.tr
-                    key={h.id}
+                    key={h.id_penilaian || i}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
@@ -73,10 +113,10 @@ export default function HasilPerlombaanPage() {
                     <td className="px-4 py-3 text-white font-medium">{h.lomba}</td>
                     <td className="px-4 py-3" style={{ color: '#8B7DAB' }}>{h.kategori}</td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#A78BFA', fontFamily: 'Space Mono, monospace' }}>
-                      {h.nilaiAkhir}
+                      {h.nilai_akhir || '-'}
                     </td>
                     <td className="px-4 py-3 font-bold text-white">
-                      {RANK_MEDALS[h.peringkat] || ''} #{h.peringkat}
+                      {h.status === 'Selesai' ? `${RANK_MEDALS[h.peringkat] || ''} #${h.peringkat}` : '-'}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -91,6 +131,7 @@ export default function HasilPerlombaanPage() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       </div>
     </Layout>

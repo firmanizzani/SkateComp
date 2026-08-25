@@ -7,8 +7,8 @@ export default function ProfilPage() {
   const { user, updateUser } = useAuth();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    namaLengkap: user?.namaLengkap || '',
-    noHp: user?.noHp || '',
+    namaLengkap: user?.namaLengkap || user?.nama || '',
+    noHp: user?.noHp || user?.no_hp || '',
     alamat: user?.alamat || '',
     jenisKelamin: user?.jenisKelamin || 'Laki-laki',
   });
@@ -39,11 +39,11 @@ export default function ProfilPage() {
   };
 
   const rows = [
-    { label: 'Nama Lengkap', value: user?.namaLengkap || '-', field: 'namaLengkap' },
-    { label: 'Tanggal Lahir', value: formatTanggal(user?.tanggalLahir || ''), field: null },
+    { label: 'Nama Lengkap', value: user?.namaLengkap || user?.nama || '-', field: 'namaLengkap' },
+    { label: 'Tanggal Lahir', value: formatTanggal(user?.tanggalLahir || user?.tanggal_lahir || ''), field: null },
     { label: 'Jenis Kelamin', value: user?.jenisKelamin || '-', field: null },
     { label: 'Alamat', value: user?.alamat || '-', field: 'alamat' },
-    { label: 'Nomor HP', value: user?.noHp || '-', field: 'noHp' },
+    { label: 'Nomor HP', value: user?.noHp || user?.no_hp || '-', field: 'noHp' },
     { label: 'Email', value: user?.email || '-', field: null },
   ];
 
@@ -57,7 +57,7 @@ export default function ProfilPage() {
               <div className="w-28 h-28 rounded-full overflow-hidden border-4 flex items-center justify-center font-bold text-3xl text-white" style={{ borderColor: '#7C3AED', background: '#7C3AED' }}>
                 {user?.foto ? (
                   <img src={user.foto} alt="avatar" className="w-full h-full object-cover" />
-                ) : user?.namaLengkap?.[0]?.toUpperCase()}
+                ) : (user?.namaLengkap || user?.nama)?.[0]?.toUpperCase()}
               </div>
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
               <button

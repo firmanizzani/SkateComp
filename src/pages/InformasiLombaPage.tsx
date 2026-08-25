@@ -1,17 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
-import { LOMBA_LIST } from '../lib/data';
 import { formatRupiah } from '../lib/data';
+import { apiFetch } from '../lib/api';
+
+interface JenisLomba {
+  id_jenis_lomba: string | number;
+  nama_lomba: string;
+  deskripsi: string;
+  biaya_pendaftaran: number;
+}
 
 export default function InformasiLombaPage() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState('Semua');
+  const [lombaList, setLombaList] = useState<JenisLomba[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const filtered = filter === 'Semua' ? LOMBA_LIST : LOMBA_LIST.filter(l => l.nama === filter);
+  useEffect(() => {
+    const fetchJenisLomba = async () => {
+      setLoading(true);
+      try {
+        const res = await apiFetch('/api/lomba/jenis');
+        setLombaList(res || []);
+      } catch (err: any) {
+        setError(err.message || 'Gagal memuat informasi lomba');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJenisLomba();
+  }, []);
 
-  const LombaIcon = ({ icon, nama }: { icon: string; nama: string }) => {
+  const filtered = filter === 'Semua' ? lombaList : lombaList.filter(l => l.nama_lomba === filter);
+
+  const LombaIcon = ({ nama }: { nama: string }) => {
     const iconMap: Record<string, React.ReactNode> = {
       'Classic Slalom': (
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
@@ -45,7 +70,7 @@ export default function InformasiLombaPage() {
     };
     return (
       <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#2D2440' }}>
-        {iconMap[nama] || <span className="text-2xl">{icon}</span>}
+        {iconMap[nama] || <span className="text-2xl text-white">🏆</span>}
       </div>
     );
   };
@@ -56,55 +81,63 @@ export default function InformasiLombaPage() {
         <div className="rounded-2xl p-4 md:p-6" style={{ background: '#120D1E', border: '1px solid #2D2440' }}>
           <h2 className="text-xl font-bold text-white mb-5">Informasi Lomba</h2>
 
-          {/* Filter */}
-          <div className="flex flex-wrap gap-2 mb-5">
-            {['Semua', ...LOMBA_LIST.map(l => l.nama)].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className="px-4 py-1.5 rounded-lg text-sm font-medium transition"
-                style={filter === f
-                  ? { background: '#7C3AED', color: '#fff' }
-                  : { background: '#1A1428', border: '1px solid #2D2440', color: '#8B7DAB' }
-                }
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
-          {/* Cards */}
-          <div className="flex flex-col gap-3">
-            {filtered.map((lomba, i) => (
-              <motion.div
-                key={lomba.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
-                style={{ background: '#1A1428', border: '1px solid #2D2440' }}
-              >
-                <LombaIcon icon={lomba.icon} nama={lomba.nama} />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-white mb-0.5">{lomba.nama}</h3>
-                  <p className="text-sm" style={{ color: '#8B7DAB' }}>{lomba.deskripsi}</p>
-                </div>
-                <div className="flex flex-col sm:items-end gap-2">
-                  <div>
-                    <p className="text-xs mb-0.5" style={{ color: '#8B7DAB' }}>Biaya Pendaftaran</p>
-                    <p className="text-sm font-semibold text-white">{formatRupiah(lomba.biaya)}</p>
-                  </div>
+          {loading ? (
+            <div className="text-center py-8 text-white">Loading...</div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-500">{error}</div>
+          ) : (
+            <>
+              {/* Filter */}
+              <div className="flex flex-wrap gap-2 mb-5">
+                {['Semua', ...lombaList.map(l => l.nama_lomba)].map(f => (
                   <button
-                    onClick={() => navigate(`/informasi-lomba/${lomba.id}`)}
-                    className="px-4 py-1.5 rounded-lg text-sm font-medium text-white transition hover:opacity-90"
-                    style={{ background: '#7C3AED' }}
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className="px-4 py-1.5 rounded-lg text-sm font-medium transition"
+                    style={filter === f
+                      ? { background: '#7C3AED', color: '#fff' }
+                      : { background: '#1A1428', border: '1px solid #2D2440', color: '#8B7DAB' }
+                    }
                   >
-                    Lihat Detail
+                    {f}
                   </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                ))}
+              </div>
+
+              {/* Cards */}
+              <div className="flex flex-col gap-3">
+                {filtered.map((lomba, i) => (
+                  <motion.div
+                    key={lomba.id_jenis_lomba}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+                    style={{ background: '#1A1428', border: '1px solid #2D2440' }}
+                  >
+                    <LombaIcon nama={lomba.nama_lomba} />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-white mb-0.5">{lomba.nama_lomba}</h3>
+                      <p className="text-sm" style={{ color: '#8B7DAB' }}>{lomba.deskripsi}</p>
+                    </div>
+                    <div className="flex flex-col sm:items-end gap-2">
+                      <div>
+                        <p className="text-xs mb-0.5" style={{ color: '#8B7DAB' }}>Biaya Pendaftaran</p>
+                        <p className="text-sm font-semibold text-white">{formatRupiah(lomba.biaya_pendaftaran)}</p>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/informasi-lomba/${lomba.id_jenis_lomba}`)}
+                        className="px-4 py-1.5 rounded-lg text-sm font-medium text-white transition hover:opacity-90"
+                        style={{ background: '#7C3AED' }}
+                      >
+                        Lihat Detail
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </Layout>

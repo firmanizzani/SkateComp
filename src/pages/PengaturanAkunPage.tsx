@@ -15,17 +15,39 @@ export default function PengaturanAkunPage() {
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setError('');
     setSuccess('');
     if (!form.oldPass || !form.newPass || !form.confirmPass) { setError('Semua field wajib diisi'); return; }
-    if (form.oldPass !== user?.password) { setError('Password lama tidak sesuai'); return; }
     if (form.newPass.length < 8) { setError('Password baru minimal 8 karakter'); return; }
     if (form.newPass !== form.confirmPass) { setError('Konfirmasi password tidak cocok'); return; }
-    updateUser({ password: form.newPass });
-    setForm({ oldPass: '', newPass: '', confirmPass: '' });
-    setSuccess('Password berhasil diubah!');
-    setTimeout(() => setSuccess(''), 3000);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          oldPassword: form.oldPass,
+          newPassword: form.newPass,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setError(data.message || 'Gagal mengubah password.');
+        return;
+      }
+
+      setForm({ oldPass: '', newPass: '', confirmPass: '' });
+      setSuccess('Password berhasil diubah!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch {
+      setError('Gagal menghubungi server.');
+    }
   };
 
   const inputStyle = {

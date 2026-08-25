@@ -14,26 +14,24 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!email || !password) { setError('Email dan password wajib diisi'); return; }
     setLoading(true);
-    setTimeout(() => {
-      const result = login(email, password);
-      if (result.ok && result.user) {
-        if (result.user.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else if (result.user.role === 'juri') {
-          navigate('/juri/dashboard');
-        } else {
-          navigate('/dashboard');
-        }
+    const result = await login(email, password);
+    if (result.ok && result.user) {
+      if (result.user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (result.user.role === 'juri') {
+        navigate('/juri/dashboard');
       } else {
-        setError(result.error || 'Login gagal');
+        navigate('/dashboard');
       }
-      setLoading(false);
-    }, 500);
+    } else {
+      setError(result.error || 'Login gagal');
+    }
+    setLoading(false);
   };
 
   return (
