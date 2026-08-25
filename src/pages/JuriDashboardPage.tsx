@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { getPendaftaran, getHasil, saveHasil } from '../lib/data';
-import type { Pendaftaran, HasilLomba } from '../types';
+import { apiFetch } from '../lib/api';
+import type { Pendaftaran } from '../types';
 import { Trophy, CheckCircle, Clock } from 'lucide-react';
 
 export default function JuriDashboardPage() {
   const { user } = useAuth();
   const [pendaftaranList, setPendaftaranList] = useState<Pendaftaran[]>([]);
-  const [hasilList, setHasilList] = useState<HasilLomba[]>([]);
+  const [hasilList, setHasilList] = useState<any[]>([]);
   const [selectedSub, setSelectedSub] = useState<Pendaftaran | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   
   // Score form inputs
   const [aspek1, setAspek1] = useState('');
@@ -18,26 +20,75 @@ export default function JuriDashboardPage() {
   const [catatan, setCatatan] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  useEffect(() => {
-    // Load all registrations
-    const list = getPendaftaran();
-    // Filter only verified registrations to be judged
-    const verified = list.filter(p => p.status === 'Terverifikasi');
-    setPendaftaranList(verified);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      // 1. Fetch pendaftaran
+      const resPendaftaran = await apiFetch('/api/pendaftaran');
+      const dataPendaftaran = await resPendaftaran.json();
+      if (!dataPendaftaran.success) {
+        setError(dataPendaftaran.message || 'Gagal memuat data pendaftaran.');
+        return;
+      }
 
-    // Load results
-    setHasilList(getHasil());
+      // Map registrations
+      const mappedList: Pendaftaran[] = (dataPendaftaran.data || []).map((p: any) => ({
+        id: p.id_pendaftaran,
+        userId: p.id_peserta,
+        lomba: p.jadwal?.jenisLomba?.nama_lomba || '',
+        kategori: p.jadwal?.kategori?.nama_kategori || '',
+        tanggalDaftar: p.tanggal_daftar,
+        tanggalLomba: p.jadwal?.tanggal_lomba || '',
+        lokasi: p.jadwal?.lokasi || '',
+        biaya: Number(p.jadwal?.jenisLomba?.biaya_pendaftaran) || 0,
+        status: p.status_pendaftaran,
+        bibNumber: p.peserta?.nomor_bib || undefined
+      }));
+
+      // Filter only verified registrations to be judged
+      const verified = mappedList.filter(p => p.status === 'Terverifikasi');
+      setPendaftaranList(verified);
+
+      // 2. Fetch penilaian (scores)
+      const resPenilaian = await apiFetch('/api/penilaian');
+      const dataPenilaian = await resPenilaian.json();
+      if (dataPenilaian.success) {
+        const mappedHasil = (dataPenilaian.data || []).map((h: any) => ({
+          id: h.id_penilaian,
+          userId: h.pendaftaran?.id_peserta || '',
+          pendaftaranId: h.id_pendaftaran,
+          lomba: h.pendaftaran?.jadwal?.jenisLomba?.nama_lomba || '',
+          kategori: h.pendaftaran?.jadwal?.kategori?.nama_kategori || '',
+          nilaiAkhir: Number(h.nilai_akhir) || 0,
+          peringkat: 0,
+          status: 'Selesai',
+          aspek_1: h.aspek_1,
+          aspek_2: h.aspek_2,
+          aspek_3: h.aspek_3,
+          catatan_penilaian: h.catatan_penilaian
+        }));
+        setHasilList(mappedHasil);
+      }
+    } catch {
+      setError('Gagal menghubungi server.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleSelectParticipant = (sub: Pendaftaran) => {
     setSelectedSub(sub);
     const existing = hasilList.find(h => h.pendaftaranId === sub.id);
     if (existing) {
-      // Pre-fill if already graded (mocking database values)
-      setAspek1('80');
-      setAspek2('82');
-      setAspek3('85');
-      setCatatan('Sudah dinilai');
+      setAspek1(existing.aspek_1?.toString() || '');
+      setAspek2(existing.aspek_2?.toString() || '');
+      setAspek3(existing.aspek_3?.toString() || '');
+      setCatatan(existing.catatan_penilaian || '');
     } else {
       setAspek1('');
       setAspek2('');
@@ -47,44 +98,44 @@ export default function JuriDashboardPage() {
     setSuccessMsg('');
   };
 
-  const handleSubmitScore = (e: React.FormEvent) => {
+  const handleSubmitScore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSub || !user) return;
 
     const val1 = parseFloat(aspek1) || 0;
     const val2 = parseFloat(aspek2) || 0;
     const val3 = parseFloat(aspek3) || 0;
-    const finalScore = parseFloat(((val1 + val2 + val3) / 3).toFixed(2));
 
-    const currentHasil = getHasil();
-    const existingIdx = currentHasil.findIndex(h => h.pendaftaranId === selectedSub.id);
+    try {
+      const res = await apiFetch('/api/penilaian', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_pendaftaran: selectedSub.id,
+          aspek_1: val1,
+          aspek_2: val2,
+          aspek_3: val3,
+          catatan_penilaian: catatan
+        })
+      });
 
-    const newHasil: HasilLomba = {
-      id: existingIdx !== -1 ? currentHasil[existingIdx].id : `hasil-${Date.now()}`,
-      userId: selectedSub.userId,
-      pendaftaranId: selectedSub.id,
-      lomba: selectedSub.lomba,
-      kategori: selectedSub.kategori,
-      nilaiAkhir: finalScore,
-      peringkat: existingIdx !== -1 ? currentHasil[existingIdx].peringkat : 0, // Admin will compute actual rankings
-      status: 'Selesai'
-    };
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setError(data.message || 'Gagal menyimpan nilai.');
+        return;
+      }
 
-    if (existingIdx !== -1) {
-      currentHasil[existingIdx] = newHasil;
-    } else {
-      currentHasil.push(newHasil);
+      setSuccessMsg('Penilaian berhasil disimpan!');
+      await loadData();
+      
+      // Clear selection after a delay
+      setTimeout(() => {
+        setSelectedSub(null);
+        setSuccessMsg('');
+      }, 1500);
+    } catch {
+      setError('Gagal menghubungi server.');
     }
-
-    saveHasil(currentHasil);
-    setHasilList(currentHasil);
-    setSuccessMsg('Penilaian berhasil disimpan!');
-    
-    // Clear selection after a delay
-    setTimeout(() => {
-      setSelectedSub(null);
-      setSuccessMsg('');
-    }, 1500);
   };
 
   const isGraded = (pendaftaranId: string) => {
@@ -124,7 +175,15 @@ export default function JuriDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-sm text-[#F1EEF8]">
-                  {pendaftaranList.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-gray-500">Memuat data peserta...</td>
+                    </tr>
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-red-400">{error}</td>
+                    </tr>
+                  ) : pendaftaranList.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-8 text-center text-gray-500">Belum ada pendaftaran terverifikasi</td>
                     </tr>
