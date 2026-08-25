@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
-import { formatRupiah } from '../lib/data';
+import { formatRupiah, LOMBA_LIST } from '../lib/data';
 import { apiFetch } from '../lib/api';
 
 interface JenisLomba {
@@ -119,7 +119,9 @@ export default function InformasiLombaPage() {
                     <LombaIcon nama={lomba.nama_lomba} />
                     <div className="flex-1">
                       <h3 className="font-semibold text-white mb-0.5">{lomba.nama_lomba}</h3>
-                      <p className="text-sm" style={{ color: '#8B7DAB' }}>{lomba.deskripsi}</p>
+                      <p className="text-sm" style={{ color: '#8B7DAB' }}>
+                        {lomba.deskripsi || LOMBA_LIST.find(l => l.nama === lomba.nama_lomba)?.deskripsi || ''}
+                      </p>
                     </div>
                     <div className="flex flex-col sm:items-end gap-2">
                       <div>
@@ -136,6 +138,17 @@ export default function InformasiLombaPage() {
                     </div>
                   </motion.div>
                 ))}
+              </div>
+
+              {/* Lihat Jadwal Button */}
+              <div className="flex justify-end mt-5">
+                <button
+                  onClick={() => navigate('/jadwal-lomba')}
+                  className="px-6 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90 flex items-center gap-2"
+                  style={{ background: '#7C3AED' }}
+                >
+                  Lihat Jadwal
+                </button>
               </div>
             </>
           )}
