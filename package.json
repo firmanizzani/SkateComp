@@ -13,7 +13,7 @@
     "deploy": "gh-pages -d dist",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "node prisma/seed.js",
+    "db:seed": "node prisma/seed.cjs",
     "db:studio": "prisma studio"
   },
   "dependencies": {
@@ -46,6 +46,6 @@
     "vite": "^8.2.0"
   },
   "prisma": {
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.cjs"
   }
 }
