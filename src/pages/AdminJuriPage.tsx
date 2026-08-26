@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { getUsers, saveUsers } from '../lib/data';
+import { apiFetch } from '../lib/api';
 import type { User } from '../types';
 import { ShieldCheck, UserPlus } from 'lucide-react';
 
@@ -19,12 +19,27 @@ export default function AdminJuriPage() {
     loadJuripole();
   }, []);
 
-  const loadJuripole = () => {
-    const list = getUsers();
-    setJuriList(list.filter(u => u.role === 'juri'));
+  const loadJuripole = async () => {
+    try {
+      const res = await apiFetch('/api/juri');
+      const data = await res.json();
+      if (data.success) {
+        const mapped = (data.data || []).map((j: any) => ({
+          id: j.id_juri,
+          namaLengkap: j.nama_juri,
+          email: j.email,
+          noHp: j.no_hp || '-',
+          password: '•••••••• (Terenkripsi)',
+          role: 'juri' as const
+        }));
+        setJuriList(mapped);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleAddJuri = (e: React.FormEvent) => {
+  const handleAddJuri = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -34,34 +49,30 @@ export default function AdminJuriPage() {
       return;
     }
 
-    const currentUsers = getUsers();
-    if (currentUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-      setErrorMsg('Email sudah terdaftar pada sistem');
-      return;
+    try {
+      const res = await apiFetch('/api/juri', {
+        method: 'POST',
+        body: JSON.stringify({
+          nama_juri: nama,
+          email: email,
+          password: password,
+          no_hp: noHp || null
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuccessMsg(`Juri ${nama} berhasil ditambahkan!`);
+        setNama('');
+        setEmail('');
+        setNoHp('');
+        setPassword('');
+        loadJuripole();
+      } else {
+        setErrorMsg(data.message || 'Gagal menambahkan juri');
+      }
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
     }
-
-    const newJuri: User = {
-      id: `juri-${Date.now()}`,
-      namaLengkap: nama,
-      email: email,
-      noHp: noHp || '-',
-      tanggalLahir: '1990-01-01', // Default
-      jenisKelamin: 'Laki-laki',
-      alamat: 'Arena Lomba',
-      password: password,
-      role: 'juri',
-      createdAt: new Date().toISOString(),
-    };
-
-    const updated = [...currentUsers, newJuri];
-    saveUsers(updated);
-    loadJuripole();
-    
-    setSuccessMsg(`Juri ${nama} berhasil ditambahkan!`);
-    setNama('');
-    setEmail('');
-    setNoHp('');
-    setPassword('');
   };
 
   return (

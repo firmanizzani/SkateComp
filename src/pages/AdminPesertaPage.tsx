@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { getUsers } from '../lib/data';
+import { apiFetch } from '../lib/api';
 import type { User } from '../types';
 import { Users, Mail, Phone, Calendar } from 'lucide-react';
 
@@ -8,8 +8,28 @@ export default function AdminPesertaPage() {
   const [pesertaList, setPesertaList] = useState<User[]>([]);
 
   useEffect(() => {
-    const list = getUsers();
-    setPesertaList(list.filter(u => u.role === 'peserta'));
+    const fetchPeserta = async () => {
+      try {
+        const res = await apiFetch('/api/peserta');
+        const data = await res.json();
+        if (data.success) {
+          const mapped = (data.data || []).map((p: any) => ({
+            id: p.id_peserta,
+            namaLengkap: p.nama_peserta,
+            email: p.email,
+            noHp: p.no_hp || '-',
+            tanggalLahir: p.tanggal_lahir ? new Date(p.tanggal_lahir).toLocaleDateString('id-ID') : '-',
+            jenisKelamin: p.jenis_kelamin === 'L' ? 'Laki-laki' : p.jenis_kelamin === 'P' ? 'Perempuan' : p.jenis_kelamin,
+            bibNumber: p.nomor_bib,
+            alamat: p.alamat || '-'
+          }));
+          setPesertaList(mapped);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchPeserta();
   }, []);
 
   return (
