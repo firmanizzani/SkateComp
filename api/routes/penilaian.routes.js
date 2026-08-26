@@ -9,10 +9,6 @@ router.get('/', verifyToken, async (req, res) => {
     let where = {};
     if (req.user.role === 'juri') {
       where.id_juri = req.user.id;
-    } else if (req.user.role === 'peserta') {
-      where.pendaftaran = {
-        id_peserta: req.user.id
-      };
     }
 
     const data = await prisma.penilaian.findMany({

@@ -21,22 +21,40 @@ export default function HasilPerlombaanPage() {
         const res = await apiFetch('/api/penilaian');
         const data = await res.json();
         if (data.success) {
-          // Sort descending by nilai_akhir to calculate rank
           const allHasil = data.data || data.penilaian || [];
-          allHasil.sort((a: any, b: any) => (b.nilai_akhir || 0) - (a.nilai_akhir || 0));
-          
-          // Add rank
-          const ranked = allHasil.map((h: any, i: number) => ({
-            ...h,
-            peringkat: i + 1,
-            lomba: h.pendaftaran?.jadwal?.jenisLomba?.nama_lomba || '-',
-            kategori: h.pendaftaran?.jadwal?.kategori?.nama_kategori || '-',
-            status: h.nilai_akhir !== null ? 'Selesai' : 'Belum'
-          }));
-          
-          // If the API returns all, we might need to filter by user.id if role is peserta
-          // Assuming backend handles it, but just in case, if the data contains id_peserta
-          setHasilList(ranked);
+
+          // Group assessments by id_jadwal (competition + category event)
+          const groups: Record<string, any[]> = {};
+          allHasil.forEach((h: any) => {
+            const jadwalId = h.pendaftaran?.id_jadwal || 'unknown';
+            if (!groups[jadwalId]) {
+              groups[jadwalId] = [];
+            }
+            groups[jadwalId].push(h);
+          });
+
+          // Sort descending and rank within each group
+          const ranked: any[] = [];
+          Object.keys(groups).forEach(jadwalId => {
+            const group = groups[jadwalId];
+            group.sort((a: any, b: any) => Number(b.nilai_akhir || 0) - Number(a.nilai_akhir || 0));
+            group.forEach((h: any, index: number) => {
+              ranked.push({
+                ...h,
+                peringkat: index + 1,
+                lomba: h.pendaftaran?.jadwal?.jenisLomba?.nama_lomba || '-',
+                kategori: h.pendaftaran?.jadwal?.kategori?.nama_kategori || '-',
+                status: h.nilai_akhir !== null ? 'Selesai' : 'Belum'
+              });
+            });
+          });
+
+          // If current user is peserta, filter to show only their own assessments
+          const filteredHasil = user?.role === 'peserta'
+            ? ranked.filter((h: any) => String(h.pendaftaran?.id_peserta) === String(user.id))
+            : ranked;
+
+          setHasilList(filteredHasil);
         } else {
           setError(data.message || 'Gagal mengambil hasil perlombaan');
         }
