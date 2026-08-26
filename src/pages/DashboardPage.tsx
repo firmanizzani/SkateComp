@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!user) return;
     const fetchData = async () => {
       setLoading(true);
       setError('');
@@ -59,7 +60,11 @@ export default function DashboardPage() {
         const hasilData = await hasilRes.json();
         setPendaftaranList(pendaftaranData?.data || []);
         setJadwalList(jadwalData?.data || []);
-        setHasilList(hasilData?.data || []);
+        
+        // Filter hasilList by the logged-in user
+        const allHasil = hasilData?.data || [];
+        const userHasil = allHasil.filter((h: any) => String(h.pendaftaran?.id_peserta) === String(user.id));
+        setHasilList(userHasil);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat memuat data');
       } finally {
@@ -67,7 +72,7 @@ export default function DashboardPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [user]);
 
   const pemenangList = pendaftaranList.map(p => p.pemenang).filter(Boolean);
   const hasJuara1 = pemenangList.some(p => p?.peringkat === 'Juara_1');

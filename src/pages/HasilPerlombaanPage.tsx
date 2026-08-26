@@ -16,6 +16,7 @@ export default function HasilPerlombaanPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!user) return;
     const fetchHasil = async () => {
       try {
         const res = await apiFetch('/api/penilaian');
