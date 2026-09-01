@@ -3,6 +3,11 @@ import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
 import { Users, Mail, Phone, Calendar, Search } from 'lucide-react';
 
+interface RegistrationPair {
+  lomba: string;
+  kategori: string;
+}
+
 interface MappedPeserta {
   id: string;
   namaLengkap: string;
@@ -12,6 +17,7 @@ interface MappedPeserta {
   jenisKelamin: string;
   bibNumber?: string;
   alamat: string;
+  pendaftaranPairs: RegistrationPair[];
   lombaList: string[];
   kategoriList: string[];
 }
@@ -32,8 +38,13 @@ export default function AdminPesertaPage() {
         if (data.success) {
           const mapped: MappedPeserta[] = (data.data || []).map((p: any) => {
             const pendaftaran = p.pendaftaran || [];
-            const lombaList = Array.from(new Set(pendaftaran.map((pd: any) => pd.jadwal?.jenisLomba?.nama_lomba).filter(Boolean))) as string[];
-            const kategoriList = Array.from(new Set(pendaftaran.map((pd: any) => pd.jadwal?.kategori?.nama_kategori).filter(Boolean))) as string[];
+            const pendaftaranPairs: RegistrationPair[] = pendaftaran.map((pd: any) => ({
+              lomba: pd.jadwal?.jenisLomba?.nama_lomba || '-',
+              kategori: pd.jadwal?.kategori?.nama_kategori || '-'
+            }));
+            const lombaList = Array.from(new Set(pendaftaranPairs.map(pd => pd.lomba).filter(l => l !== '-')));
+            const kategoriList = Array.from(new Set(pendaftaranPairs.map(pd => pd.kategori).filter(k => k !== '-')));
+
             return {
               id: p.id_peserta,
               namaLengkap: p.nama_peserta || '',
@@ -43,6 +54,7 @@ export default function AdminPesertaPage() {
               jenisKelamin: p.jenis_kelamin === 'L' ? 'Laki-laki' : p.jenis_kelamin === 'P' ? 'Perempuan' : p.jenis_kelamin || '-',
               bibNumber: p.nomor_bib || '-',
               alamat: p.alamat || '-',
+              pendaftaranPairs,
               lombaList,
               kategoriList,
             };
@@ -198,13 +210,11 @@ export default function AdminPesertaPage() {
                   <tr key={p.id} className="hover:bg-white/2 transition-colors">
                     <td className="py-4 pl-2 font-semibold text-white">{p.namaLengkap}</td>
                     <td className="py-4 space-y-1">
-                      {p.lombaList.length > 0 ? (
-                        p.lombaList.map((lomba, idx) => (
+                      {p.pendaftaranPairs.length > 0 ? (
+                        p.pendaftaranPairs.map((pair, idx) => (
                           <div key={idx} className="flex items-center gap-1.5 text-xs">
-                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-medium">{lomba}</span>
-                            {p.kategoriList[idx] && (
-                              <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">{p.kategoriList[idx]}</span>
-                            )}
+                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-medium">{pair.lomba}</span>
+                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">{pair.kategori}</span>
                           </div>
                         ))
                       ) : (

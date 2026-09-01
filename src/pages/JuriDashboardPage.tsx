@@ -229,9 +229,14 @@ export default function JuriDashboardPage() {
 
   const sortedList = [...filteredList].sort((a, b) => {
     if (sortField === 'bib') {
-      const bibA = parseInt(a.bibNumber || a.id) || 0;
-      const bibB = parseInt(b.bibNumber || b.id) || 0;
-      return sortDirection === 'asc' ? bibA - bibB : bibB - bibA;
+      const strA = a.bibNumber || a.id || '';
+      const strB = b.bibNumber || b.id || '';
+      const bibA = parseInt(strA) || 0;
+      const bibB = parseInt(strB) || 0;
+      if (bibA !== 0 && bibB !== 0) {
+        return sortDirection === 'asc' ? bibA - bibB : bibB - bibA;
+      }
+      return sortDirection === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
     }
     if (sortField === 'score') {
       const scoreA = typeof getScore(a.id) === 'number' ? (getScore(a.id) as number) : -1;
