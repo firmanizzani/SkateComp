@@ -3,15 +3,20 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
 import type { Pendaftaran } from '../types';
-import { Trophy, CheckCircle, Clock } from 'lucide-react';
+import { Trophy, CheckCircle, Clock, Search, X } from 'lucide-react';
+
+interface ExtendedPendaftaran extends Pendaftaran {
+  namaPeserta?: string;
+}
 
 export default function JuriDashboardPage() {
   const { user } = useAuth();
-  const [pendaftaranList, setPendaftaranList] = useState<Pendaftaran[]>([]);
+  const [pendaftaranList, setPendaftaranList] = useState<ExtendedPendaftaran[]>([]);
   const [hasilList, setHasilList] = useState<any[]>([]);
-  const [selectedSub, setSelectedSub] = useState<Pendaftaran | null>(null);
+  const [selectedSub, setSelectedSub] = useState<ExtendedPendaftaran | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterLomba, setFilterLomba] = useState('Semua');
   const [filterKategori, setFilterKategori] = useState('Semua');
   
@@ -35,9 +40,10 @@ export default function JuriDashboardPage() {
       }
 
       // Map registrations
-      const mappedList: Pendaftaran[] = (dataPendaftaran.data || []).map((p: any) => ({
+      const mappedList: ExtendedPendaftaran[] = (dataPendaftaran.data || []).map((p: any) => ({
         id: p.id_pendaftaran,
         userId: p.id_peserta,
+        namaPeserta: p.peserta?.nama_peserta || 'Peserta',
         lomba: p.jadwal?.jenisLomba?.nama_lomba || '',
         kategori: p.jadwal?.kategori?.nama_kategori || '',
         tanggalDaftar: p.tanggal_daftar,
@@ -83,7 +89,7 @@ export default function JuriDashboardPage() {
     loadData();
   }, [loadData]);
 
-  const handleSelectParticipant = (sub: Pendaftaran) => {
+  const handleSelectParticipant = (sub: ExtendedPendaftaran) => {
     setSelectedSub(sub);
     const existing = hasilList.find(h => h.pendaftaranId === sub.id);
     if (existing) {
@@ -134,7 +140,7 @@ export default function JuriDashboardPage() {
       setTimeout(() => {
         setSelectedSub(null);
         setSuccessMsg('');
-      }, 1500);
+      }, 1000);
     } catch {
       setError('Gagal menghubungi server.');
     }
@@ -149,136 +155,206 @@ export default function JuriDashboardPage() {
     return found ? found.nilaiAkhir : '-';
   };
 
+  const sortKategoriList = (list: string[]) => {
+    const getAgeOrder = (str: string) => {
+      const s = str.toUpperCase();
+      if (s.includes('U9')) return 1;
+      if (s.includes('U12')) return 2;
+      if (s.includes('YOUTH')) return 3;
+      if (s.includes('JUNIOR')) return 4;
+      if (s.includes('SENIOR')) return 5;
+      return 6;
+    };
+
+    const getGenderOrder = (str: string) => {
+      const s = str.toUpperCase();
+      if (s.includes('WOMEN') || s.includes('PEREMPUAN')) return 2;
+      if (s.includes('MEN') || s.includes('LAKI-LAKI') || s.includes('PRIA')) return 1;
+      return 3;
+    };
+
+    return [...list].sort((a, b) => {
+      const ageA = getAgeOrder(a);
+      const ageB = getAgeOrder(b);
+      if (ageA !== ageB) return ageA - ageB;
+
+      const genderA = getGenderOrder(a);
+      const genderB = getGenderOrder(b);
+      if (genderA !== genderB) return genderA - genderB;
+
+      return a.localeCompare(b);
+    });
+  };
+
   const uniqueLomba = Array.from(new Set(pendaftaranList.map(p => p.lomba))).filter(Boolean);
-  const uniqueKategori = Array.from(new Set(pendaftaranList.map(p => p.kategori))).filter(Boolean);
+  const rawKategori = Array.from(new Set(pendaftaranList.map(p => p.kategori))).filter(Boolean);
+  const uniqueKategori = sortKategoriList(rawKategori);
 
   const filteredList = pendaftaranList.filter(p => {
     const matchLomba = filterLomba === 'Semua' || p.lomba === filterLomba;
     const matchKategori = filterKategori === 'Semua' || p.kategori === filterKategori;
-    return matchLomba && matchKategori;
+    const searchLower = searchTerm.toLowerCase();
+    const matchSearch = !searchTerm || 
+      (p.namaPeserta && p.namaPeserta.toLowerCase().includes(searchLower)) ||
+      p.id.toLowerCase().includes(searchLower) ||
+      (p.bibNumber && p.bibNumber.toLowerCase().includes(searchLower));
+
+    return matchLomba && matchKategori && matchSearch;
   });
 
   return (
     <Layout title="Dashboard Juri">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="space-y-6">
         
-        {/* Left/Middle: Participant List */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="p-6 rounded-2xl" style={{ background: '#120D1E', border: '1px solid #2D2440' }}>
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <Trophy className="text-purple-400" size={20} />
-              Daftar Peserta untuk Dinilai
-            </h2>
-            <p className="text-sm mb-6" style={{ color: '#8B7DAB' }}>
-              Saring peserta berdasarkan cabang lomba dan kategori, lalu pilih peserta terverifikasi untuk dinilai.
-            </p>
-
-            {/* Filter Dropdowns */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="flex-1">
-                <label className="block text-xs mb-1.5 font-medium" style={{ color: '#8B7DAB' }}>Cabang Lomba</label>
-                <select
-                  value={filterLomba}
-                  onChange={e => setFilterLomba(e.target.value)}
-                  className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
-                  style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
-                >
-                  <option value="Semua">Semua Cabang Lomba</option>
-                  {uniqueLomba.map(l => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
+        {/* Main Participant List */}
+        <div className="p-6 rounded-2xl" style={{ background: '#120D1E', border: '1px solid #2D2440' }}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-purple-500/10 text-purple-400">
+                <Trophy size={24} />
               </div>
-              <div className="flex-1">
-                <label className="block text-xs mb-1.5 font-medium" style={{ color: '#8B7DAB' }}>Kategori</label>
-                <select
-                  value={filterKategori}
-                  onChange={e => setFilterKategori(e.target.value)}
-                  className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
-                  style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
-                >
-                  <option value="Semua">Semua Kategori</option>
-                  {uniqueKategori.map(k => (
-                    <option key={k} value={k}>{k}</option>
-                  ))}
-                </select>
+              <div>
+                <h2 className="text-xl font-bold text-white">Daftar Peserta untuk Dinilai</h2>
+                <p className="text-sm" style={{ color: '#8B7DAB' }}>
+                  Saring dan cari peserta terverifikasi untuk memasukkan atau mengubah poin penilaian juri.
+                </p>
               </div>
             </div>
+          </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #2D2440', color: '#8B7DAB' }} className="text-xs font-semibold uppercase">
-                    <th className="pb-3 pl-2">ID/BIB</th>
-                    <th className="pb-3">Cabang Lomba</th>
-                    <th className="pb-3">Kategori</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3">Nilai</th>
-                    <th className="pb-3 text-right pr-2">Aksi</th>
+          {/* Filter & Search Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 pt-2">
+            {/* Search Input */}
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#8B7DAB' }} />
+              <input
+                type="text"
+                placeholder="Cari nama peserta / BIB / ID..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
+                style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
+              />
+            </div>
+
+            {/* Cabang Lomba Dropdown */}
+            <div>
+              <select
+                value={filterLomba}
+                onChange={e => setFilterLomba(e.target.value)}
+                className="w-full rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
+                style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
+              >
+                <option value="Semua">Semua Cabang Lomba</option>
+                {uniqueLomba.map(l => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Kategori Dropdown (U9 -> U12 -> Youth, Men -> Women) */}
+            <div>
+              <select
+                value={filterKategori}
+                onChange={e => setFilterKategori(e.target.value)}
+                className="w-full rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
+                style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
+              >
+                <option value="Semua">Semua Kategori Usia</option>
+                {uniqueKategori.map(k => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr style={{ borderBottom: '1px solid #2D2440', color: '#8B7DAB' }} className="text-xs font-semibold uppercase">
+                  <th className="pb-3 pl-2">ID / BIB</th>
+                  <th className="pb-3">Nama Peserta</th>
+                  <th className="pb-3">Cabang Lomba</th>
+                  <th className="pb-3">Kategori</th>
+                  <th className="pb-3">Status</th>
+                  <th className="pb-3">Nilai</th>
+                  <th className="pb-3 text-right pr-2">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-sm text-[#F1EEF8]">
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-gray-500">Memuat data peserta...</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-sm text-[#F1EEF8]">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-gray-500">Memuat data peserta...</td>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-red-400">{error}</td>
+                  </tr>
+                ) : pendaftaranList.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-gray-500">Belum ada pendaftaran terverifikasi</td>
+                  </tr>
+                ) : filteredList.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-gray-500">Tidak ada peserta yang cocok dengan filter / pencarian</td>
+                  </tr>
+                ) : (
+                  filteredList.map((p) => (
+                    <tr key={p.id} className="hover:bg-white/2 transition-colors">
+                      <td className="py-4 pl-2 font-mono text-xs">{p.bibNumber || p.id}</td>
+                      <td className="py-4 font-semibold text-white">{p.namaPeserta}</td>
+                      <td className="py-4 font-semibold text-[#8B7DAB]">{p.lomba}</td>
+                      <td className="py-4 text-[#8B7DAB]">{p.kategori}</td>
+                      <td className="py-4">
+                        {isGraded(p.id) ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-green-400 bg-green-500/10 px-2.5 py-1 rounded-full font-medium">
+                            <CheckCircle size={12} /> Sudah Dinilai
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-yellow-400 bg-yellow-500/10 px-2.5 py-1 rounded-full font-medium">
+                            <Clock size={12} /> Menunggu Nilai
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-4 font-bold text-purple-400">{getScore(p.id)}</td>
+                      <td className="py-4 text-right pr-2">
+                        <button
+                          onClick={() => handleSelectParticipant(p)}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition"
+                        >
+                          {isGraded(p.id) ? 'Ubah Nilai' : 'Masukkan Nilai'}
+                        </button>
+                      </td>
                     </tr>
-                  ) : error ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-red-400">{error}</td>
-                    </tr>
-                  ) : pendaftaranList.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-gray-500">Belum ada pendaftaran terverifikasi</td>
-                    </tr>
-                  ) : filteredList.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-gray-500">Tidak ada peserta yang cocok dengan filter aktif</td>
-                    </tr>
-                  ) : (
-                    filteredList.map((p) => (
-                      <tr key={p.id} className="hover:bg-white/2 transition-colors">
-                        <td className="py-4 pl-2 font-mono text-xs">{p.bibNumber || p.id}</td>
-                        <td className="py-4 font-semibold text-white">{p.lomba}</td>
-                        <td className="py-4 text-[#8B7DAB]">{p.kategori}</td>
-                        <td className="py-4">
-                          {isGraded(p.id) ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-green-400 bg-green-500/10 px-2.5 py-1 rounded-full font-medium">
-                              <CheckCircle size={12} /> Sudah Dinilai
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs text-yellow-400 bg-yellow-500/10 px-2.5 py-1 rounded-full font-medium">
-                              <Clock size={12} /> Menunggu Nilai
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-4 font-bold text-purple-400">{getScore(p.id)}</td>
-                        <td className="py-4 text-right pr-2">
-                          <button
-                            onClick={() => handleSelectParticipant(p)}
-                            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition"
-                          >
-                            {isGraded(p.id) ? 'Ubah Nilai' : 'Beri Nilai'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Right: Grading Form panel */}
-        <div className="lg:col-span-1">
-          {selectedSub ? (
-            <div className="p-6 rounded-2xl" style={{ background: '#120D1E', border: '1px solid #2D2440' }}>
-              <h3 className="text-lg font-bold text-white mb-2">Penilaian Peserta</h3>
-              <p className="text-xs mb-4" style={{ color: '#8B7DAB' }}>
-                Lomba: <span className="text-white font-medium">{selectedSub.lomba}</span><br />
-                Kategori: <span className="text-white font-medium">{selectedSub.kategori}</span><br />
-                ID: <span className="text-white font-mono">{selectedSub.id}</span>
-              </p>
+        {/* Modal Grading Popup */}
+        {selectedSub && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)' }}>
+            <div className="w-full max-w-lg p-6 rounded-2xl relative" style={{ background: '#120D1E', border: '1px solid #2D2440' }}>
+              
+              <button
+                onClick={() => setSelectedSub(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition"
+              >
+                <X size={20} />
+              </button>
+
+              <h3 className="text-lg font-bold text-white mb-1">
+                {isGraded(selectedSub.id) ? 'Ubah Penilaian Peserta' : 'Masukkan Nilai Peserta'}
+              </h3>
+              <div className="p-3 rounded-lg mb-4 text-xs space-y-1" style={{ background: '#0A0710', border: '1px solid #2D2440' }}>
+                <p style={{ color: '#8B7DAB' }}>Nama: <span className="text-white font-semibold">{selectedSub.namaPeserta}</span></p>
+                <p style={{ color: '#8B7DAB' }}>Lomba: <span className="text-white font-medium">{selectedSub.lomba}</span></p>
+                <p style={{ color: '#8B7DAB' }}>Kategori: <span className="text-white font-medium">{selectedSub.kategori}</span></p>
+                <p style={{ color: '#8B7DAB' }}>BIB / ID: <span className="text-white font-mono">{selectedSub.bibNumber || selectedSub.id}</span></p>
+              </div>
 
               <form onSubmit={handleSubmitScore} className="space-y-4">
                 <div>
@@ -344,33 +420,26 @@ export default function JuriDashboardPage() {
                   </p>
                 )}
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setSelectedSub(null)}
-                    className="flex-1 py-2 text-xs font-semibold rounded-lg bg-white/5 hover:bg-white/10 text-white transition"
+                    className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-white/5 hover:bg-white/10 text-white transition"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2 text-xs font-semibold rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition"
+                    className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition"
                   >
                     Simpan Nilai
                   </button>
                 </div>
               </form>
+
             </div>
-          ) : (
-            <div className="p-6 rounded-2xl text-center border-dashed border-2 flex flex-col justify-center items-center min-h-[300px]" style={{ borderColor: '#2D2440', background: '#120D1E' }}>
-              <Trophy size={40} className="text-purple-500/50 mb-3" />
-              <p className="text-sm font-medium text-white mb-1">Pilih Peserta</p>
-              <p className="text-xs max-w-[200px]" style={{ color: '#8B7DAB' }}>
-                Silakan pilih peserta di tabel sebelah kiri untuk mulai memasukkan poin juri.
-              </p>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
       </div>
     </Layout>
