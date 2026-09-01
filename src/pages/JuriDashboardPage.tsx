@@ -3,7 +3,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
 import type { Pendaftaran } from '../types';
-import { Trophy, CheckCircle, Clock, Search, X } from 'lucide-react';
+import { Trophy, CheckCircle, Clock, Search, X, ArrowUpDown } from 'lucide-react';
 
 interface ExtendedPendaftaran extends Pendaftaran {
   namaPeserta?: string;
@@ -19,6 +19,7 @@ export default function JuriDashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLomba, setFilterLomba] = useState('Semua');
   const [filterKategori, setFilterKategori] = useState('Semua');
+  const [sortScoreOrder, setSortScoreOrder] = useState<'asc' | 'desc' | null>(null);
   
   // Score form inputs
   const [aspek1, setAspek1] = useState('');
@@ -155,6 +156,12 @@ export default function JuriDashboardPage() {
     return found ? found.nilaiAkhir : '-';
   };
 
+  const toggleSortScore = () => {
+    if (sortScoreOrder === null) setSortScoreOrder('desc');
+    else if (sortScoreOrder === 'desc') setSortScoreOrder('asc');
+    else setSortScoreOrder(null);
+  };
+
   const sortKategoriList = (list: string[]) => {
     const getAgeOrder = (str: string) => {
       const s = str.toUpperCase();
@@ -200,6 +207,13 @@ export default function JuriDashboardPage() {
       (p.bibNumber && p.bibNumber.toLowerCase().includes(searchLower));
 
     return matchLomba && matchKategori && matchSearch;
+  });
+
+  const sortedList = [...filteredList].sort((a, b) => {
+    if (!sortScoreOrder) return 0;
+    const scoreA = typeof getScore(a.id) === 'number' ? (getScore(a.id) as number) : -1;
+    const scoreB = typeof getScore(b.id) === 'number' ? (getScore(b.id) as number) : -1;
+    return sortScoreOrder === 'asc' ? scoreA - scoreB : scoreB - scoreA;
   });
 
   return (
@@ -278,7 +292,21 @@ export default function JuriDashboardPage() {
                   <th className="pb-3">Cabang Lomba</th>
                   <th className="pb-3">Kategori</th>
                   <th className="pb-3">Status</th>
-                  <th className="pb-3">Nilai</th>
+                  <th 
+                    className="pb-3 cursor-pointer hover:text-white transition select-none"
+                    onClick={toggleSortScore}
+                    title="Klik untuk mengurutkan nilai"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Nilai</span>
+                      <ArrowUpDown size={14} className={sortScoreOrder ? 'text-purple-400' : 'text-gray-500'} />
+                      {sortScoreOrder && (
+                        <span className="text-[10px] text-purple-400 normal-case font-normal">
+                          ({sortScoreOrder === 'asc' ? 'Terendah' : 'Tertinggi'})
+                        </span>
+                      )}
+                    </div>
+                  </th>
                   <th className="pb-3 text-right pr-2">Aksi</th>
                 </tr>
               </thead>
@@ -295,12 +323,12 @@ export default function JuriDashboardPage() {
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-gray-500">Belum ada pendaftaran terverifikasi</td>
                   </tr>
-                ) : filteredList.length === 0 ? (
+                ) : sortedList.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-gray-500">Tidak ada peserta yang cocok dengan filter / pencarian</td>
                   </tr>
                 ) : (
-                  filteredList.map((p) => (
+                  sortedList.map((p) => (
                     <tr key={p.id} className="hover:bg-white/2 transition-colors">
                       <td className="py-4 pl-2 font-mono text-xs">{p.bibNumber || p.id}</td>
                       <td className="py-4 font-semibold text-white">{p.namaPeserta}</td>
