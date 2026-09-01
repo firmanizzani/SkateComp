@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -6,8 +6,27 @@ import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { user, loading: authLoading, register } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (user.role === 'admin') navigate('/admin/dashboard', { replace: true });
+      else if (user.role === 'juri') navigate('/juri/dashboard', { replace: true });
+      else navigate('/dashboard', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-white" style={{ background: '#0A0710' }}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-purple-300">Memuat sesi...</p>
+        </div>
+      </div>
+    );
+  }
   const [form, setForm] = useState({
     namaLengkap: '',
     email: '',
