@@ -198,11 +198,6 @@ export default function HasilPerlombaanPage() {
                     <div className="flex items-center gap-1.5">
                       <span>Peringkat</span>
                       <ArrowUpDown size={14} className={sortRankOrder ? 'text-purple-400' : 'text-gray-500'} />
-                      {sortRankOrder && (
-                        <span className="text-[10px] text-purple-400 font-normal">
-                          ({sortRankOrder === 'asc' ? 'Terbaik #1' : 'Terendah'})
-                        </span>
-                      )}
                     </div>
                   </th>
                   <th className="text-left px-4 py-3 font-medium" style={{ color: '#8B7DAB' }}>Status</th>

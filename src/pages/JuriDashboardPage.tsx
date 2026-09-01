@@ -19,7 +19,6 @@ export default function JuriDashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLomba, setFilterLomba] = useState('Semua');
   const [filterKategori, setFilterKategori] = useState('Semua');
-  const [sortScoreOrder, setSortScoreOrder] = useState<'asc' | 'desc' | null>(null);
   
   // Score form inputs
   const [aspek1, setAspek1] = useState('');
@@ -147,6 +146,31 @@ export default function JuriDashboardPage() {
     }
   };
 
+  const [sortField, setSortField] = useState<'default' | 'bib' | 'score'>('default');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const handleSortBib = () => {
+    if (sortField !== 'bib') {
+      setSortField('bib');
+      setSortDirection('asc');
+    } else if (sortDirection === 'asc') {
+      setSortDirection('desc');
+    } else {
+      setSortField('default');
+    }
+  };
+
+  const handleSortScore = () => {
+    if (sortField !== 'score') {
+      setSortField('score');
+      setSortDirection('desc');
+    } else if (sortDirection === 'desc') {
+      setSortDirection('asc');
+    } else {
+      setSortField('default');
+    }
+  };
+
   const isGraded = (pendaftaranId: string) => {
     return hasilList.some(h => h.pendaftaranId === pendaftaranId && h.status === 'Selesai');
   };
@@ -154,12 +178,6 @@ export default function JuriDashboardPage() {
   const getScore = (pendaftaranId: string) => {
     const found = hasilList.find(h => h.pendaftaranId === pendaftaranId);
     return found ? found.nilaiAkhir : '-';
-  };
-
-  const toggleSortScore = () => {
-    if (sortScoreOrder === null) setSortScoreOrder('desc');
-    else if (sortScoreOrder === 'desc') setSortScoreOrder('asc');
-    else setSortScoreOrder(null);
   };
 
   const sortKategoriList = (list: string[]) => {
@@ -210,10 +228,17 @@ export default function JuriDashboardPage() {
   });
 
   const sortedList = [...filteredList].sort((a, b) => {
-    if (!sortScoreOrder) return 0;
-    const scoreA = typeof getScore(a.id) === 'number' ? (getScore(a.id) as number) : -1;
-    const scoreB = typeof getScore(b.id) === 'number' ? (getScore(b.id) as number) : -1;
-    return sortScoreOrder === 'asc' ? scoreA - scoreB : scoreB - scoreA;
+    if (sortField === 'bib') {
+      const bibA = parseInt(a.bibNumber || a.id) || 0;
+      const bibB = parseInt(b.bibNumber || b.id) || 0;
+      return sortDirection === 'asc' ? bibA - bibB : bibB - bibA;
+    }
+    if (sortField === 'score') {
+      const scoreA = typeof getScore(a.id) === 'number' ? (getScore(a.id) as number) : -1;
+      const scoreB = typeof getScore(b.id) === 'number' ? (getScore(b.id) as number) : -1;
+      return sortDirection === 'desc' ? scoreB - scoreA : scoreA - scoreB;
+    }
+    return 0; // Default order
   });
 
   return (
@@ -284,30 +309,34 @@ export default function JuriDashboardPage() {
 
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr style={{ borderBottom: '1px solid #2D2440', color: '#8B7DAB' }} className="text-xs font-semibold uppercase">
-                  <th className="pb-3 pl-2">ID / BIB</th>
-                  <th className="pb-3">Nama Peserta</th>
-                  <th className="pb-3">Cabang Lomba</th>
-                  <th className="pb-3">Kategori</th>
-                  <th className="pb-3">Status</th>
                   <th 
-                    className="pb-3 cursor-pointer hover:text-white transition select-none"
-                    onClick={toggleSortScore}
+                    className="pb-3 pl-2 w-28 cursor-pointer hover:text-white transition select-none"
+                    onClick={handleSortBib}
+                    title="Klik untuk mengurutkan BIB"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>ID / BIB</span>
+                      <ArrowUpDown size={14} className={sortField === 'bib' ? 'text-purple-400' : 'text-gray-500'} />
+                    </div>
+                  </th>
+                  <th className="pb-3 w-44">Nama Peserta</th>
+                  <th className="pb-3 w-36">Cabang Lomba</th>
+                  <th className="pb-3 w-36">Kategori</th>
+                  <th className="pb-3 w-36">Status</th>
+                  <th 
+                    className="pb-3 w-24 cursor-pointer hover:text-white transition select-none"
+                    onClick={handleSortScore}
                     title="Klik untuk mengurutkan nilai"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>Nilai</span>
-                      <ArrowUpDown size={14} className={sortScoreOrder ? 'text-purple-400' : 'text-gray-500'} />
-                      {sortScoreOrder && (
-                        <span className="text-[10px] text-purple-400 normal-case font-normal">
-                          ({sortScoreOrder === 'asc' ? 'Terendah' : 'Tertinggi'})
-                        </span>
-                      )}
+                      <ArrowUpDown size={14} className={sortField === 'score' ? 'text-purple-400' : 'text-gray-500'} />
                     </div>
                   </th>
-                  <th className="pb-3 text-right pr-2">Aksi</th>
+                  <th className="pb-3 text-right pr-2 w-32">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-sm text-[#F1EEF8]">
@@ -330,10 +359,10 @@ export default function JuriDashboardPage() {
                 ) : (
                   sortedList.map((p) => (
                     <tr key={p.id} className="hover:bg-white/2 transition-colors">
-                      <td className="py-4 pl-2 font-mono text-xs">{p.bibNumber || p.id}</td>
-                      <td className="py-4 font-semibold text-white">{p.namaPeserta}</td>
-                      <td className="py-4 font-semibold text-[#8B7DAB]">{p.lomba}</td>
-                      <td className="py-4 text-[#8B7DAB]">{p.kategori}</td>
+                      <td className="py-4 pl-2 font-mono text-xs truncate">{p.bibNumber || p.id}</td>
+                      <td className="py-4 font-semibold text-white truncate" title={p.namaPeserta}>{p.namaPeserta}</td>
+                      <td className="py-4 font-semibold text-[#8B7DAB] truncate" title={p.lomba}>{p.lomba}</td>
+                      <td className="py-4 text-[#8B7DAB] truncate" title={p.kategori}>{p.kategori}</td>
                       <td className="py-4">
                         {isGraded(p.id) ? (
                           <span className="inline-flex items-center gap-1 text-xs text-green-400 bg-green-500/10 px-2.5 py-1 rounded-full font-medium">

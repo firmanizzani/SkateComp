@@ -18,7 +18,8 @@ export default function AdminRekapPage() {
   const [filterLomba, setFilterLomba] = useState('Semua');
   const [filterKategori, setFilterKategori] = useState('Semua');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortScoreOrder, setSortScoreOrder] = useState<'desc' | 'asc'>('desc');
+  const [sortField, setSortField] = useState<'default' | 'bib' | 'score'>('default');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,8 +49,26 @@ export default function AdminRekapPage() {
     fetchRekap();
   }, []);
 
-  const toggleSortScore = () => {
-    setSortScoreOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+  const handleSortBib = () => {
+    if (sortField !== 'bib') {
+      setSortField('bib');
+      setSortDirection('asc');
+    } else if (sortDirection === 'asc') {
+      setSortDirection('desc');
+    } else {
+      setSortField('default');
+    }
+  };
+
+  const handleSortScore = () => {
+    if (sortField !== 'score') {
+      setSortField('score');
+      setSortDirection('desc');
+    } else if (sortDirection === 'desc') {
+      setSortDirection('asc');
+    } else {
+      setSortField('default');
+    }
   };
 
   const sortKategoriList = (list: string[]) => {
@@ -99,9 +118,16 @@ export default function AdminRekapPage() {
     return matchLomba && matchKategori && matchSearch;
   });
 
-  // Sort by score ascending or descending
   const sortedHasil = [...filteredHasil].sort((a, b) => {
-    return sortScoreOrder === 'desc' ? b.nilai_akhir - a.nilai_akhir : a.nilai_akhir - b.nilai_akhir;
+    if (sortField === 'bib') {
+      const bibA = parseInt(a.nomor_bib) || 0;
+      const bibB = parseInt(b.nomor_bib) || 0;
+      return sortDirection === 'asc' ? bibA - bibB : bibB - bibA;
+    }
+    if (sortField === 'score') {
+      return sortDirection === 'desc' ? b.nilai_akhir - a.nilai_akhir : a.nilai_akhir - b.nilai_akhir;
+    }
+    return 0; // Default order as fetched
   });
 
   return (
@@ -173,25 +199,31 @@ export default function AdminRekapPage() {
           <div className="text-center py-8 text-white">Memuat data papan peringkat...</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr style={{ borderBottom: '1px solid #2D2440', color: '#8B7DAB' }} className="text-xs font-semibold uppercase">
                   <th className="pb-3 pl-2 w-16">Rank</th>
-                  <th className="pb-3">BIB / No Registrasi</th>
-                  <th className="pb-3">Nama Peserta</th>
-                  <th className="pb-3">Cabang Lomba</th>
-                  <th className="pb-3">Kategori</th>
                   <th 
-                    className="pb-3 text-right pr-2 cursor-pointer hover:text-white transition select-none"
-                    onClick={toggleSortScore}
+                    className="pb-3 w-28 cursor-pointer hover:text-white transition select-none"
+                    onClick={handleSortBib}
+                    title="Klik untuk mengurutkan No. BIB"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>No. BIB</span>
+                      <ArrowUpDown size={14} className={sortField === 'bib' ? 'text-purple-400' : 'text-gray-500'} />
+                    </div>
+                  </th>
+                  <th className="pb-3 w-44">Nama Peserta</th>
+                  <th className="pb-3 w-36">Cabang Lomba</th>
+                  <th className="pb-3 w-36">Kategori</th>
+                  <th 
+                    className="pb-3 text-right pr-2 w-32 cursor-pointer hover:text-white transition select-none"
+                    onClick={handleSortScore}
                     title="Klik untuk mengurutkan nilai akhir"
                   >
                     <div className="flex items-center justify-end gap-1.5">
                       <span>Nilai Akhir</span>
-                      <ArrowUpDown size={14} className="text-purple-400" />
-                      <span className="text-[10px] text-purple-400 normal-case font-normal">
-                        ({sortScoreOrder === 'asc' ? 'Terendah' : 'Tertinggi'})
-                      </span>
+                      <ArrowUpDown size={14} className={sortField === 'score' ? 'text-purple-400' : 'text-gray-500'} />
                     </div>
                   </th>
                 </tr>
@@ -214,10 +246,10 @@ export default function AdminRekapPage() {
                           {rank === 3 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-600 text-black text-xs font-bold" title="Juara 3">🥉</span>}
                           {rank > 3 && <span className="pl-1.5 text-xs text-[#8B7DAB]">{rank}</span>}
                         </td>
-                        <td className="py-4 font-mono text-xs">{h.nomor_bib} / {h.id_pendaftaran}</td>
-                        <td className="py-4 font-semibold text-white">{h.nama_peserta}</td>
-                        <td className="py-4 text-[#8B7DAB]">{h.lomba}</td>
-                        <td className="py-4 text-xs text-[#8B7DAB]">{h.kategori}</td>
+                        <td className="py-4 font-mono text-xs">{h.nomor_bib}</td>
+                        <td className="py-4 font-semibold text-white truncate" title={h.nama_peserta}>{h.nama_peserta}</td>
+                        <td className="py-4 text-[#8B7DAB] truncate" title={h.lomba}>{h.lomba}</td>
+                        <td className="py-4 text-xs text-[#8B7DAB] truncate" title={h.kategori}>{h.kategori}</td>
                         <td className="py-4 font-bold text-purple-400 text-right pr-2 text-base">{h.nilai_akhir}</td>
                       </tr>
                     );
