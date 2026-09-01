@@ -112,16 +112,21 @@ export default function AdminRekapPage() {
 
   const sortedHasil = [...filteredHasil].sort((a, b) => {
     if (sortField === 'bib') {
-      const bibA = parseInt(a.nomor_bib) || 0;
-      const bibB = parseInt(b.nomor_bib) || 0;
-      return sortDirection === 'asc' ? bibA - bibB : bibB - bibA;
+      const bibA = parseInt(a.nomor_bib || '') || 0;
+      const bibB = parseInt(b.nomor_bib || '') || 0;
+      if (bibA !== 0 && bibB !== 0) {
+        return sortDirection === 'asc' ? bibA - bibB : bibB - bibA;
+      }
+      return sortDirection === 'asc' 
+        ? (a.nomor_bib || '').localeCompare(b.nomor_bib || '') 
+        : (b.nomor_bib || '').localeCompare(a.nomor_bib || '');
     }
     if (sortField === 'score') {
       const scoreA = a.nilai_rata_rata ?? -1;
       const scoreB = b.nilai_rata_rata ?? -1;
       return sortDirection === 'desc' ? scoreB - scoreA : scoreA - scoreB;
     }
-    return 0; // Default order as fetched (already sorted by server: desc nilai_rata_rata, null last)
+    return 0; // Default order as fetched
   });
 
   return (
