@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
-import { Users, Mail, Phone, Calendar, Search, Filter } from 'lucide-react';
+import { Users, Mail, Phone, Calendar, Search } from 'lucide-react';
 
 interface MappedPeserta {
   id: string;
