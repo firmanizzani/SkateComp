@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
-import { Trophy, Search } from 'lucide-react';
+import { Trophy, Search, ArrowUpDown } from 'lucide-react';
 
 interface Hasil {
   id: string | number;
@@ -18,6 +18,7 @@ export default function AdminRekapPage() {
   const [filterLomba, setFilterLomba] = useState('Semua');
   const [filterKategori, setFilterKategori] = useState('Semua');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortScoreOrder, setSortScoreOrder] = useState<'desc' | 'asc'>('desc');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +47,10 @@ export default function AdminRekapPage() {
     };
     fetchRekap();
   }, []);
+
+  const toggleSortScore = () => {
+    setSortScoreOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+  };
 
   const sortKategoriList = (list: string[]) => {
     const getAgeOrder = (str: string) => {
@@ -94,8 +99,10 @@ export default function AdminRekapPage() {
     return matchLomba && matchKategori && matchSearch;
   });
 
-  // Sort by score descending to see who is leading
-  const sortedHasil = [...filteredHasil].sort((a, b) => b.nilai_akhir - a.nilai_akhir);
+  // Sort by score ascending or descending
+  const sortedHasil = [...filteredHasil].sort((a, b) => {
+    return sortScoreOrder === 'desc' ? b.nilai_akhir - a.nilai_akhir : a.nilai_akhir - b.nilai_akhir;
+  });
 
   return (
     <Layout title="Rekap Nilai & Juara">
@@ -174,7 +181,19 @@ export default function AdminRekapPage() {
                   <th className="pb-3">Nama Peserta</th>
                   <th className="pb-3">Cabang Lomba</th>
                   <th className="pb-3">Kategori</th>
-                  <th className="pb-3 text-right pr-2">Nilai Akhir</th>
+                  <th 
+                    className="pb-3 text-right pr-2 cursor-pointer hover:text-white transition select-none"
+                    onClick={toggleSortScore}
+                    title="Klik untuk mengurutkan nilai akhir"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>Nilai Akhir</span>
+                      <ArrowUpDown size={14} className="text-purple-400" />
+                      <span className="text-[10px] text-purple-400 normal-case font-normal">
+                        ({sortScoreOrder === 'asc' ? 'Terendah' : 'Tertinggi'})
+                      </span>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-sm text-[#F1EEF8]">

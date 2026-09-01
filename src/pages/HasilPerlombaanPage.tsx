@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
+import { ArrowUpDown } from 'lucide-react';
 
 type Filter = 'Semua' | 'Sudah Dinilai' | 'Belum Dinilai';
 
@@ -12,6 +13,7 @@ export default function HasilPerlombaanPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('Semua');
   const [hasilList, setHasilList] = useState<any[]>([]);
+  const [sortRankOrder, setSortRankOrder] = useState<'asc' | 'desc' | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -130,12 +132,25 @@ export default function HasilPerlombaanPage() {
     fetchHasil();
   }, [user]);
 
+  const toggleSortRank = () => {
+    if (sortRankOrder === null) setSortRankOrder('asc'); // #1 -> #2 -> #3
+    else if (sortRankOrder === 'asc') setSortRankOrder('desc'); // #3 -> #2 -> #1
+    else setSortRankOrder(null);
+  };
+
   const filtered =
     filter === 'Sudah Dinilai'
       ? hasilList.filter(h => h.status === 'Selesai')
       : filter === 'Belum Dinilai'
       ? hasilList.filter(h => h.status !== 'Selesai')
       : hasilList;
+
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (!sortRankOrder) return 0;
+    const rankA = a.peringkat ?? 999;
+    const rankB = b.peringkat ?? 999;
+    return sortRankOrder === 'asc' ? rankA - rankB : rankB - rankA;
+  });
 
   const filters: Filter[] = ['Semua', 'Sudah Dinilai', 'Belum Dinilai'];
 
@@ -171,19 +186,36 @@ export default function HasilPerlombaanPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: '#1A1428', borderBottom: '1px solid #2D2440' }}>
-                  {['Lomba', 'Kategori', 'Nilai Rata-rata', 'Peringkat', 'Status'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: '#8B7DAB' }}>{h}</th>
-                  ))}
+                  <th className="text-left px-4 py-3 font-medium" style={{ color: '#8B7DAB' }}>Lomba</th>
+                  <th className="text-left px-4 py-3 font-medium" style={{ color: '#8B7DAB' }}>Kategori</th>
+                  <th className="text-left px-4 py-3 font-medium" style={{ color: '#8B7DAB' }}>Nilai Rata-rata</th>
+                  <th 
+                    className="text-left px-4 py-3 font-medium cursor-pointer hover:text-white transition select-none"
+                    onClick={toggleSortRank}
+                    style={{ color: '#8B7DAB' }}
+                    title="Klik untuk mengurutkan peringkat"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Peringkat</span>
+                      <ArrowUpDown size={14} className={sortRankOrder ? 'text-purple-400' : 'text-gray-500'} />
+                      {sortRankOrder && (
+                        <span className="text-[10px] text-purple-400 font-normal">
+                          ({sortRankOrder === 'asc' ? 'Terbaik #1' : 'Terendah'})
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium" style={{ color: '#8B7DAB' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {sortedFiltered.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8" style={{ color: '#8B7DAB' }}>
                       Belum ada hasil perlombaan yang diikuti.
                     </td>
                   </tr>
-                ) : filtered.map((h, i) => (
+                ) : sortedFiltered.map((h, i) => (
                   <motion.tr
                     key={h.id_pendaftaran || i}
                     initial={{ opacity: 0 }}
