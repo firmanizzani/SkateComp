@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
-import { Trophy } from 'lucide-react';
+import { Trophy, Search } from 'lucide-react';
 
 interface Hasil {
   id: string | number;
@@ -16,6 +16,8 @@ interface Hasil {
 export default function AdminRekapPage() {
   const [hasilList, setHasilList] = useState<Hasil[]>([]);
   const [filterLomba, setFilterLomba] = useState('Semua');
+  const [filterKategori, setFilterKategori] = useState('Semua');
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,9 +47,20 @@ export default function AdminRekapPage() {
     fetchRekap();
   }, []);
 
-  const filteredHasil = filterLomba === 'Semua' 
-    ? hasilList 
-    : hasilList.filter(h => h.lomba === filterLomba);
+  const uniqueLomba = Array.from(new Set(hasilList.map(h => h.lomba))).filter(Boolean);
+  const uniqueKategori = Array.from(new Set(hasilList.map(h => h.kategori))).filter(Boolean);
+
+  const filteredHasil = hasilList.filter(h => {
+    const matchLomba = filterLomba === 'Semua' || h.lomba === filterLomba;
+    const matchKategori = filterKategori === 'Semua' || h.kategori === filterKategori;
+    const searchLower = searchTerm.toLowerCase();
+    const matchSearch = !searchTerm || 
+      h.nama_peserta.toLowerCase().includes(searchLower) || 
+      h.nomor_bib.toLowerCase().includes(searchLower) || 
+      h.id_pendaftaran.toLowerCase().includes(searchLower);
+
+    return matchLomba && matchKategori && matchSearch;
+  });
 
   // Sort by score descending to see who is leading
   const sortedHasil = [...filteredHasil].sort((a, b) => b.nilai_akhir - a.nilai_akhir);
@@ -56,6 +69,7 @@ export default function AdminRekapPage() {
     <Layout title="Rekap Nilai & Juara">
       <div className="p-6 rounded-2xl space-y-6" style={{ background: '#120D1E', border: '1px solid #2D2440' }}>
         
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-purple-500/10 text-purple-400">
@@ -68,19 +82,50 @@ export default function AdminRekapPage() {
               </p>
             </div>
           </div>
+        </div>
 
+        {/* Filter & Search Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#8B7DAB' }} />
+            <input
+              type="text"
+              placeholder="Cari nama peserta / BIB..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
+              style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
+            />
+          </div>
+
+          {/* Filter Jenis Lomba */}
           <div>
             <select
               value={filterLomba}
               onChange={e => setFilterLomba(e.target.value)}
-              className="rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition min-w-[200px]"
+              className="w-full rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
               style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
             >
-              <option value="Semua">Semua Cabang Lomba</option>
-              <option value="Classic Slalom">Classic Slalom</option>
-              <option value="Freestyle Slide">Freestyle Slide</option>
-              <option value="Speed Slalom">Speed Slalom</option>
-              <option value="Skate Race">Skate Race</option>
+              <option value="Semua">Semua Jenis Lomba</option>
+              {uniqueLomba.map(lomba => (
+                <option key={lomba} value={lomba}>{lomba}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter Kategori Usia */}
+          <div>
+            <select
+              value={filterKategori}
+              onChange={e => setFilterKategori(e.target.value)}
+              className="w-full rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
+              style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
+            >
+              <option value="Semua">Semua Kategori Usia</option>
+              {uniqueKategori.map(kat => (
+                <option key={kat} value={kat}>{kat}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -103,7 +148,9 @@ export default function AdminRekapPage() {
               <tbody className="divide-y divide-white/5 text-sm text-[#F1EEF8]">
                 {sortedHasil.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-gray-500">Belum ada data penilaian masuk</td>
+                    <td colSpan={6} className="py-8 text-center text-gray-500">
+                      {hasilList.length === 0 ? 'Belum ada data penilaian masuk' : 'Tidak ada hasil yang cocok dengan filter / pencarian'}
+                    </td>
                   </tr>
                 ) : (
                   sortedHasil.map((h, index) => {
