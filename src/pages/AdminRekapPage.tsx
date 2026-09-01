@@ -4,13 +4,13 @@ import { apiFetch } from '../lib/api';
 import { Trophy, Search, ArrowUpDown } from 'lucide-react';
 
 interface Hasil {
-  id: string | number;
   id_pendaftaran: string;
   nomor_bib: string;
   nama_peserta: string;
   lomba: string;
   kategori: string;
-  nilai_akhir: number;
+  jumlah_juri_menilai: number;
+  nilai_rata_rata: number | null;
 }
 
 export default function AdminRekapPage() {
@@ -29,16 +29,8 @@ export default function AdminRekapPage() {
         const res = await apiFetch('/api/admin/rekap-nilai');
         const data = await res.json();
         if (data.success) {
-          const mapped = (data.data || []).map((h: any) => ({
-            id: h.id_penilaian,
-            id_pendaftaran: h.pendaftaran?.id_pendaftaran || '-',
-            nomor_bib: h.pendaftaran?.peserta?.nomor_bib || '-',
-            nama_peserta: h.pendaftaran?.peserta?.nama_peserta || '-',
-            lomba: h.pendaftaran?.jadwal?.jenisLomba?.nama_lomba || '-',
-            kategori: h.pendaftaran?.jadwal?.kategori?.nama_kategori || '-',
-            nilai_akhir: Number(h.nilai_akhir || 0)
-          }));
-          setHasilList(mapped);
+          // API now returns one row per pendaftaran with averaged score
+          setHasilList(data.data || []);
         }
       } catch (err) {
         console.error(err);
@@ -125,9 +117,11 @@ export default function AdminRekapPage() {
       return sortDirection === 'asc' ? bibA - bibB : bibB - bibA;
     }
     if (sortField === 'score') {
-      return sortDirection === 'desc' ? b.nilai_akhir - a.nilai_akhir : a.nilai_akhir - b.nilai_akhir;
+      const scoreA = a.nilai_rata_rata ?? -1;
+      const scoreB = b.nilai_rata_rata ?? -1;
+      return sortDirection === 'desc' ? scoreB - scoreA : scoreA - scoreB;
     }
-    return 0; // Default order as fetched
+    return 0; // Default order as fetched (already sorted by server: desc nilai_rata_rata, null last)
   });
 
   return (
@@ -143,7 +137,7 @@ export default function AdminRekapPage() {
             <div>
               <h2 className="text-xl font-bold text-white">Papan Peringkat Perlombaan</h2>
               <p className="text-sm" style={{ color: '#8B7DAB' }}>
-                Rekapitulasi penilaian juri serta pemeringkatan otomatis berdasarkan skor akhir.
+                Rekapitulasi nilai rata-rata dari semua juri, satu baris per peserta per cabang lomba.
               </p>
             </div>
           </div>
@@ -217,12 +211,12 @@ export default function AdminRekapPage() {
                   <th className="pb-3 w-36">Cabang Lomba</th>
                   <th className="pb-3 w-36">Kategori</th>
                   <th 
-                    className="pb-3 text-right pr-2 w-32 cursor-pointer hover:text-white transition select-none"
+                    className="pb-3 text-right pr-2 w-40 cursor-pointer hover:text-white transition select-none"
                     onClick={handleSortScore}
-                    title="Klik untuk mengurutkan nilai akhir"
+                    title="Klik untuk mengurutkan nilai rata-rata"
                   >
                     <div className="flex items-center justify-end gap-1.5">
-                      <span>Nilai Akhir</span>
+                      <span>Nilai Rata-rata</span>
                       <ArrowUpDown size={14} className={sortField === 'score' ? 'text-purple-400' : 'text-gray-500'} />
                     </div>
                   </th>
@@ -239,7 +233,7 @@ export default function AdminRekapPage() {
                   sortedHasil.map((h, index) => {
                     const rank = index + 1;
                     return (
-                      <tr key={h.id} className="hover:bg-white/2 transition-colors">
+                      <tr key={h.id_pendaftaran} className="hover:bg-white/2 transition-colors">
                         <td className="py-4 pl-2 font-bold">
                           {rank === 1 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-black text-xs font-bold" title="Juara 1">🥇</span>}
                           {rank === 2 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300 text-black text-xs font-bold" title="Juara 2">🥈</span>}
@@ -250,7 +244,12 @@ export default function AdminRekapPage() {
                         <td className="py-4 font-semibold text-white truncate" title={h.nama_peserta}>{h.nama_peserta}</td>
                         <td className="py-4 text-[#8B7DAB] truncate" title={h.lomba}>{h.lomba}</td>
                         <td className="py-4 text-xs text-[#8B7DAB] truncate" title={h.kategori}>{h.kategori}</td>
-                        <td className="py-4 font-bold text-purple-400 text-right pr-2 text-base">{h.nilai_akhir}</td>
+                        <td className="py-4 font-bold text-purple-400 text-right pr-2 text-base">
+                          {h.nilai_rata_rata !== null ? h.nilai_rata_rata : <span className="text-gray-500 text-xs font-normal">Belum dinilai</span>}
+                          {h.jumlah_juri_menilai > 0 && (
+                            <span className="block text-[10px] font-normal text-purple-300/60">({h.jumlah_juri_menilai} juri)</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })
