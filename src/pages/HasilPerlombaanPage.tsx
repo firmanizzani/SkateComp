@@ -28,77 +28,95 @@ export default function HasilPerlombaanPage() {
         const pendaftaranData = await pendaftaranRes.json();
         const penilaianData = await penilaianRes.json();
 
-        const allPendaftaran = pendaftaranData?.data || [];
+        const userPendaftaran = pendaftaranData?.data || [];
         const allPenilaian = penilaianData?.data || penilaianData?.penilaian || [];
 
-        // 1. Group scores by id_pendaftaran to calculate average score (ROUND(AVG(pn.nilai_akhir), 2))
-        const pendaftaranScoresMap: Record<string, number[]> = {};
+        // 1. Group all scores in system by id_pendaftaran to calculate average score per registration
+        const registrationMap: Record<string, {
+          id_pendaftaran: string;
+          id_peserta: string;
+          id_jadwal: string;
+          lomba: string;
+          kategori: string;
+          scores: number[];
+        }> = {};
+
         allPenilaian.forEach((pn: any) => {
           const idPf = pn.id_pendaftaran || pn.pendaftaran?.id_pendaftaran;
-          if (idPf && pn.nilai_akhir != null) {
-            if (!pendaftaranScoresMap[idPf]) pendaftaranScoresMap[idPf] = [];
-            pendaftaranScoresMap[idPf].push(Number(pn.nilai_akhir));
+          if (!idPf) return;
+
+          if (!registrationMap[idPf]) {
+            registrationMap[idPf] = {
+              id_pendaftaran: idPf,
+              id_peserta: String(pn.pendaftaran?.id_peserta || ''),
+              id_jadwal: String(pn.pendaftaran?.id_jadwal || pn.pendaftaran?.jadwal?.id_jadwal || 'unknown'),
+              lomba: pn.pendaftaran?.jadwal?.jenisLomba?.nama_lomba || '-',
+              kategori: pn.pendaftaran?.jadwal?.kategori?.nama_kategori || '-',
+              scores: []
+            };
+          }
+
+          if (pn.nilai_akhir != null) {
+            registrationMap[idPf].scores.push(Number(pn.nilai_akhir));
           }
         });
 
-        // 2. Map all registrations in system with calculated average score
-        const mappedPendaftaran = allPendaftaran.map((pf: any) => {
-          const idPf = pf.id_pendaftaran;
-          const scores = pendaftaranScoresMap[idPf] || [];
-          const jumlahJuri = scores.length;
-          const avgScore = jumlahJuri > 0 
-            ? Number((scores.reduce((a, b) => a + b, 0) / jumlahJuri).toFixed(2))
-            : null;
+        // 2. Calculate average score for each scored registration in system
+        const regResults: Array<{
+          id_pendaftaran: string;
+          id_peserta: string;
+          id_jadwal: string;
+          lomba: string;
+          kategori: string;
+          nilai_rata_rata: number;
+        }> = [];
 
+        Object.values(registrationMap).forEach(item => {
+          if (item.scores.length > 0) {
+            const sum = item.scores.reduce((a, b) => a + b, 0);
+            const avg = Number((sum / item.scores.length).toFixed(2));
+            regResults.push({
+              id_pendaftaran: item.id_pendaftaran,
+              id_peserta: item.id_peserta,
+              id_jadwal: item.id_jadwal,
+              lomba: item.lomba,
+              kategori: item.kategori,
+              nilai_rata_rata: avg,
+            });
+          }
+        });
+
+        // 3. Group by event (id_jadwal or lomba + kategori) to calculate OVERALL RANKING across ALL participants
+        const eventGroups: Record<string, typeof regResults> = {};
+        regResults.forEach(item => {
+          const eventKey = item.id_jadwal !== 'unknown' ? item.id_jadwal : `${item.lomba}|${item.kategori}`;
+          if (!eventGroups[eventKey]) eventGroups[eventKey] = [];
+          eventGroups[eventKey].push(item);
+        });
+
+        const ranksMap: Record<string, { peringkat: number; nilai_rata_rata: number }> = {};
+        Object.values(eventGroups).forEach(group => {
+          group.sort((a, b) => b.nilai_rata_rata - a.nilai_rata_rata);
+          group.forEach((item, index) => {
+            ranksMap[item.id_pendaftaran] = {
+              peringkat: index + 1,
+              nilai_rata_rata: item.nilai_rata_rata
+            };
+          });
+        });
+
+        // 4. Map user's own registrations with their true average score and true rank
+        const finalResults = userPendaftaran.map((pf: any) => {
+          const idPf = pf.id_pendaftaran;
+          const rankInfo = ranksMap[idPf];
           return {
             id_pendaftaran: idPf,
-            id_peserta: String(pf.id_peserta || pf.peserta?.id_peserta),
-            id_jadwal: pf.id_jadwal || pf.jadwal?.id_jadwal || 'unknown',
             lomba: pf.jadwal?.jenisLomba?.nama_lomba || '-',
             kategori: pf.jadwal?.kategori?.nama_kategori || '-',
             tanggal_lomba: pf.jadwal?.tanggal_lomba || '',
-            nilai_rata_rata: avgScore,
-            jumlah_juri_menilai: jumlahJuri,
-          };
-        });
-
-        // 3. Group registrations by id_jadwal (event) to calculate overall rank
-        const eventGroups: Record<string, typeof mappedPendaftaran> = {};
-        mappedPendaftaran.forEach((item: any) => {
-          if (!eventGroups[item.id_jadwal]) eventGroups[item.id_jadwal] = [];
-          eventGroups[item.id_jadwal].push(item);
-        });
-
-        const ranksMap: Record<string, { peringkat: number | null; status: string }> = {};
-
-        Object.values(eventGroups).forEach((group: any[]) => {
-          // Sort items with scores descending
-          const graded = group.filter((i: any) => i.nilai_rata_rata !== null);
-          graded.sort((a: any, b: any) => (b.nilai_rata_rata || 0) - (a.nilai_rata_rata || 0));
-
-          graded.forEach((item: any, idx: number) => {
-            ranksMap[item.id_pendaftaran] = {
-              peringkat: idx + 1,
-              status: 'Selesai'
-            };
-          });
-
-          group.filter((i: any) => i.nilai_rata_rata === null).forEach((item: any) => {
-            ranksMap[item.id_pendaftaran] = {
-              peringkat: null,
-              status: 'Belum'
-            };
-          });
-        });
-
-        // 4. Filter strictly for logged-in user's registrations ONLY
-        const userRegistrations = mappedPendaftaran.filter((i: any) => i.id_peserta === String(user.id));
-        const finalResults = userRegistrations.map((item: any) => {
-          const rankInfo = ranksMap[item.id_pendaftaran] || { peringkat: null, status: 'Belum' };
-          return {
-            ...item,
-            peringkat: rankInfo.peringkat,
-            status: rankInfo.status
+            nilai_rata_rata: rankInfo ? rankInfo.nilai_rata_rata : null,
+            peringkat: rankInfo ? rankInfo.peringkat : null,
+            status: rankInfo ? 'Selesai' : 'Belum'
           };
         });
 
@@ -177,11 +195,6 @@ export default function HasilPerlombaanPage() {
                     <td className="px-4 py-3" style={{ color: '#8B7DAB' }}>{h.kategori}</td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#A78BFA', fontFamily: 'Space Mono, monospace' }}>
                       {h.nilai_rata_rata !== null ? h.nilai_rata_rata : '-'}
-                      {h.jumlah_juri_menilai > 0 && (
-                        <span className="block text-[10px] font-normal text-purple-300/70">
-                          ({h.jumlah_juri_menilai} juri)
-                        </span>
-                      )}
                     </td>
                     <td className="px-4 py-3 font-bold text-white">
                       {h.status === 'Selesai' && h.peringkat ? `${RANK_MEDALS[h.peringkat] || ''} #${h.peringkat}` : '-'}
