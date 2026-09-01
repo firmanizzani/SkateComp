@@ -58,13 +58,45 @@ export default function DashboardPage() {
         const pendaftaranData = await pendaftaranRes.json();
         const jadwalData = await jadwalRes.json();
         const hasilData = await hasilRes.json();
-        setPendaftaranList(pendaftaranData?.data || []);
+        const userPendaftaran = pendaftaranData?.data || [];
+        setPendaftaranList(userPendaftaran);
         setJadwalList(jadwalData?.data || []);
-        
-        // Filter hasilList by the logged-in user
-        const allHasil = hasilData?.data || [];
-        const userHasil = allHasil.filter((h: any) => String(h.pendaftaran?.id_peserta) === String(user.id));
-        setHasilList(userHasil);
+
+        // Calculate average score and rank for user's registrations to match HasilPerlombaanPage exactly
+        const allPenilaian = hasilData?.data || hasilData?.penilaian || [];
+
+        // 1. Group scores by id_pendaftaran
+        const pendaftaranScoresMap: Record<string, number[]> = {};
+        allPenilaian.forEach((pn: any) => {
+          const idPf = pn.id_pendaftaran || pn.pendaftaran?.id_pendaftaran;
+          if (idPf && pn.nilai_akhir != null) {
+            if (!pendaftaranScoresMap[idPf]) pendaftaranScoresMap[idPf] = [];
+            pendaftaranScoresMap[idPf].push(Number(pn.nilai_akhir));
+          }
+        });
+
+        // 2. Map user's registrations
+        const mappedUserHasil = userPendaftaran.map((pf: any) => {
+          const idPf = pf.id_pendaftaran;
+          const scores = pendaftaranScoresMap[idPf] || [];
+          const jumlahJuri = scores.length;
+          const avgScore = jumlahJuri > 0 
+            ? Number((scores.reduce((a, b) => a + b, 0) / jumlahJuri).toFixed(2))
+            : null;
+
+          return {
+            id_pendaftaran: idPf,
+            id_peserta: String(pf.id_peserta || pf.peserta?.id_peserta),
+            id_jadwal: pf.id_jadwal || pf.jadwal?.id_jadwal || 'unknown',
+            lomba: pf.jadwal?.jenisLomba?.nama_lomba || '-',
+            kategori: pf.jadwal?.kategori?.nama_kategori || '-',
+            nilai_rata_rata: avgScore,
+            jumlah_juri_menilai: jumlahJuri,
+            status: avgScore !== null ? 'Selesai' : 'Belum'
+          };
+        });
+
+        setHasilList(mappedUserHasil as any[]);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat memuat data');
       } finally {
@@ -83,7 +115,7 @@ export default function DashboardPage() {
   if (hasJuara1) prestasiTerbaik = 'Juara 1';
   else if (hasJuara2) prestasiTerbaik = 'Juara 2';
   else if (hasJuara3) prestasiTerbaik = 'Juara 3';
-  else if (hasilList.length > 0) prestasiTerbaik = 'Selesai';
+  else if (hasilList.some((h: any) => h.status === 'Selesai')) prestasiTerbaik = 'Selesai';
 
   const statsItems = [
     { label: 'Pendaftaran\nLomba', value: pendaftaranList.length, color: '#A78BFA' },
@@ -206,19 +238,31 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Hasil Terbaru */}
             <div className="rounded-xl p-4" style={{ background: '#1A1428', border: '1px solid #2D2440' }}>
-              <h3 className="text-sm font-semibold text-white mb-3">Hasil Perlombaan Terbaru</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-white">Hasil Perlombaan Terbaru</h3>
+                <Link to="/hasil-perlombaan" className="text-xs font-medium hover:underline" style={{ color: '#A78BFA' }}>
+                  Lihat Semua
+                </Link>
+              </div>
               {hasilList.length === 0 ? (
                 <p className="text-xs" style={{ color: '#8B7DAB' }}>Belum ada hasil perlombaan.</p>
               ) : (
-                hasilList.slice(0, 3).map(h => (
-                  <div key={h.id_penilaian} className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid #2D2440' }}>
+                hasilList.slice(0, 3).map((h: any) => (
+                  <div key={h.id_pendaftaran} className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid #2D2440' }}>
                     <div>
-                      <p className="text-xs font-medium text-white">{h.pendaftaran?.jadwal?.jenisLomba?.nama_lomba}</p>
-                      <p className="text-xs" style={{ color: '#8B7DAB' }}>{h.pendaftaran?.jadwal?.kategori?.nama_kategori}</p>
+                      <p className="text-xs font-medium text-white">{h.lomba}</p>
+                      <p className="text-xs" style={{ color: '#8B7DAB' }}>{h.kategori}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold" style={{ color: '#A78BFA', fontFamily: 'Space Mono, monospace', fontSize: 13 }}>{h.nilai_akhir}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#10B981', color: '#fff' }}>Selesai</span>
+                      <span className="font-bold" style={{ color: '#A78BFA', fontFamily: 'Space Mono, monospace', fontSize: 13 }}>
+                        {h.nilai_rata_rata !== null ? h.nilai_rata_rata : '-'}
+                      </span>
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={h.status === 'Selesai' ? { background: '#10B98120', color: '#10B981' } : { background: '#F59E0B20', color: '#F59E0B' }}
+                      >
+                        {h.status}
+                      </span>
                     </div>
                   </div>
                 ))

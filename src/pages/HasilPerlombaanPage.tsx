@@ -19,46 +19,90 @@ export default function HasilPerlombaanPage() {
     if (!user) return;
     const fetchHasil = async () => {
       try {
-        const res = await apiFetch('/api/penilaian');
-        const data = await res.json();
-        if (data.success) {
-          const allHasil = data.data || data.penilaian || [];
+        setLoading(true);
+        const [pendaftaranRes, penilaianRes] = await Promise.all([
+          apiFetch('/api/pendaftaran'),
+          apiFetch('/api/penilaian')
+        ]);
 
-          // Group assessments by id_jadwal (competition + category event)
-          const groups: Record<string, any[]> = {};
-          allHasil.forEach((h: any) => {
-            const jadwalId = h.pendaftaran?.id_jadwal || 'unknown';
-            if (!groups[jadwalId]) {
-              groups[jadwalId] = [];
-            }
-            groups[jadwalId].push(h);
+        const pendaftaranData = await pendaftaranRes.json();
+        const penilaianData = await penilaianRes.json();
+
+        const allPendaftaran = pendaftaranData?.data || [];
+        const allPenilaian = penilaianData?.data || penilaianData?.penilaian || [];
+
+        // 1. Group scores by id_pendaftaran to calculate average score (ROUND(AVG(pn.nilai_akhir), 2))
+        const pendaftaranScoresMap: Record<string, number[]> = {};
+        allPenilaian.forEach((pn: any) => {
+          const idPf = pn.id_pendaftaran || pn.pendaftaran?.id_pendaftaran;
+          if (idPf && pn.nilai_akhir != null) {
+            if (!pendaftaranScoresMap[idPf]) pendaftaranScoresMap[idPf] = [];
+            pendaftaranScoresMap[idPf].push(Number(pn.nilai_akhir));
+          }
+        });
+
+        // 2. Map all registrations in system with calculated average score
+        const mappedPendaftaran = allPendaftaran.map((pf: any) => {
+          const idPf = pf.id_pendaftaran;
+          const scores = pendaftaranScoresMap[idPf] || [];
+          const jumlahJuri = scores.length;
+          const avgScore = jumlahJuri > 0 
+            ? Number((scores.reduce((a, b) => a + b, 0) / jumlahJuri).toFixed(2))
+            : null;
+
+          return {
+            id_pendaftaran: idPf,
+            id_peserta: String(pf.id_peserta || pf.peserta?.id_peserta),
+            id_jadwal: pf.id_jadwal || pf.jadwal?.id_jadwal || 'unknown',
+            lomba: pf.jadwal?.jenisLomba?.nama_lomba || '-',
+            kategori: pf.jadwal?.kategori?.nama_kategori || '-',
+            tanggal_lomba: pf.jadwal?.tanggal_lomba || '',
+            nilai_rata_rata: avgScore,
+            jumlah_juri_menilai: jumlahJuri,
+          };
+        });
+
+        // 3. Group registrations by id_jadwal (event) to calculate overall rank
+        const eventGroups: Record<string, typeof mappedPendaftaran> = {};
+        mappedPendaftaran.forEach((item: any) => {
+          if (!eventGroups[item.id_jadwal]) eventGroups[item.id_jadwal] = [];
+          eventGroups[item.id_jadwal].push(item);
+        });
+
+        const ranksMap: Record<string, { peringkat: number | null; status: string }> = {};
+
+        Object.values(eventGroups).forEach((group: any[]) => {
+          // Sort items with scores descending
+          const graded = group.filter((i: any) => i.nilai_rata_rata !== null);
+          graded.sort((a: any, b: any) => (b.nilai_rata_rata || 0) - (a.nilai_rata_rata || 0));
+
+          graded.forEach((item: any, idx: number) => {
+            ranksMap[item.id_pendaftaran] = {
+              peringkat: idx + 1,
+              status: 'Selesai'
+            };
           });
 
-          // Sort descending and rank within each group
-          const ranked: any[] = [];
-          Object.keys(groups).forEach(jadwalId => {
-            const group = groups[jadwalId];
-            group.sort((a: any, b: any) => Number(b.nilai_akhir || 0) - Number(a.nilai_akhir || 0));
-            group.forEach((h: any, index: number) => {
-              ranked.push({
-                ...h,
-                peringkat: index + 1,
-                lomba: h.pendaftaran?.jadwal?.jenisLomba?.nama_lomba || '-',
-                kategori: h.pendaftaran?.jadwal?.kategori?.nama_kategori || '-',
-                status: h.nilai_akhir !== null ? 'Selesai' : 'Belum'
-              });
-            });
+          group.filter((i: any) => i.nilai_rata_rata === null).forEach((item: any) => {
+            ranksMap[item.id_pendaftaran] = {
+              peringkat: null,
+              status: 'Belum'
+            };
           });
+        });
 
-          // If current user is peserta, filter to show only their own assessments
-          const filteredHasil = user?.role === 'peserta'
-            ? ranked.filter((h: any) => String(h.pendaftaran?.id_peserta) === String(user.id))
-            : ranked;
+        // 4. Filter strictly for logged-in user's registrations ONLY
+        const userRegistrations = mappedPendaftaran.filter((i: any) => i.id_peserta === String(user.id));
+        const finalResults = userRegistrations.map((item: any) => {
+          const rankInfo = ranksMap[item.id_pendaftaran] || { peringkat: null, status: 'Belum' };
+          return {
+            ...item,
+            peringkat: rankInfo.peringkat,
+            status: rankInfo.status
+          };
+        });
 
-          setHasilList(filteredHasil);
-        } else {
-          setError(data.message || 'Gagal mengambil hasil perlombaan');
-        }
+        setHasilList(finalResults);
       } catch (err: any) {
         setError('Gagal menghubungi server');
       } finally {
@@ -81,7 +125,7 @@ export default function HasilPerlombaanPage() {
     <Layout title="Hasil Perlombaan">
       <div className="max-w-4xl mx-auto">
         <div className="rounded-2xl p-4 md:p-6" style={{ background: '#120D1E', border: '1px solid #2D2440' }}>
-          <h2 className="text-xl font-bold text-white mb-4">Hasil Perlombaan</h2>
+          <h2 className="text-xl font-bold text-white mb-4">Hasil Perlombaan Saya</h2>
 
           {/* Filter */}
           <div className="flex flex-wrap gap-2 mb-5">
@@ -109,7 +153,7 @@ export default function HasilPerlombaanPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: '#1A1428', borderBottom: '1px solid #2D2440' }}>
-                  {['Lomba', 'Kategori', 'Nilai Akhir', 'Peringkat', 'Status'].map(h => (
+                  {['Lomba', 'Kategori', 'Nilai Rata-rata', 'Peringkat', 'Status'].map(h => (
                     <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: '#8B7DAB' }}>{h}</th>
                   ))}
                 </tr>
@@ -118,12 +162,12 @@ export default function HasilPerlombaanPage() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8" style={{ color: '#8B7DAB' }}>
-                      Belum ada hasil perlombaan.
+                      Belum ada hasil perlombaan yang diikuti.
                     </td>
                   </tr>
                 ) : filtered.map((h, i) => (
                   <motion.tr
-                    key={h.id_penilaian || i}
+                    key={h.id_pendaftaran || i}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.05 }}
@@ -132,10 +176,15 @@ export default function HasilPerlombaanPage() {
                     <td className="px-4 py-3 text-white font-medium">{h.lomba}</td>
                     <td className="px-4 py-3" style={{ color: '#8B7DAB' }}>{h.kategori}</td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#A78BFA', fontFamily: 'Space Mono, monospace' }}>
-                      {h.nilai_akhir || '-'}
+                      {h.nilai_rata_rata !== null ? h.nilai_rata_rata : '-'}
+                      {h.jumlah_juri_menilai > 0 && (
+                        <span className="block text-[10px] font-normal text-purple-300/70">
+                          ({h.jumlah_juri_menilai} juri)
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-bold text-white">
-                      {h.status === 'Selesai' ? `${RANK_MEDALS[h.peringkat] || ''} #${h.peringkat}` : '-'}
+                      {h.status === 'Selesai' && h.peringkat ? `${RANK_MEDALS[h.peringkat] || ''} #${h.peringkat}` : '-'}
                     </td>
                     <td className="px-4 py-3">
                       <span
