@@ -30,24 +30,54 @@ router.get('/statistik', verifyToken, requireRole('admin'), async (req, res) => 
   }
 });
 
-// GET /api/admin/rekap-nilai - Full leaderboard
+// GET /api/admin/rekap-nilai - Full leaderboard, one row per pendaftaran with AVG nilai
 router.get('/rekap-nilai', verifyToken, requireRole('admin', 'juri'), async (req, res) => {
   try {
-    const { lomba } = req.query;
-    const penilaian = await prisma.penilaian.findMany({
-      where: lomba ? { pendaftaran: { jadwal: { jenisLomba: { nama_lomba: lomba } } } } : {},
+    // 1. Fetch all pendaftaran that are Terverifikasi (or all) with their penilaian
+    const allPendaftaran = await prisma.pendaftaran.findMany({
+      where: { status_pendaftaran: 'Terverifikasi' },
       include: {
-        pendaftaran: {
-          include: {
-            peserta: { select: { nama_peserta: true, nomor_bib: true } },
-            jadwal: { include: { jenisLomba: true, kategori: true } }
-          }
-        },
-        juri: { select: { nama_juri: true } }
-      },
-      orderBy: { nilai_akhir: 'desc' }
+        peserta: { select: { nama_peserta: true, nomor_bib: true } },
+        jadwal: { include: { jenisLomba: true, kategori: true } },
+        penilaian: {
+          select: { id_penilaian: true, nilai_akhir: true, id_juri: true, aspek_1: true, aspek_2: true, aspek_3: true, catatan_penilaian: true }
+        }
+      }
     });
-    return res.json({ success: true, data: penilaian });
+
+    // 2. Aggregate: compute ROUND(AVG(nilai_akhir), 2) per pendaftaran
+    const aggregated = allPendaftaran.map(pf => {
+      const scores = pf.penilaian
+        .filter(p => p.nilai_akhir != null)
+        .map(p => Number(p.nilai_akhir));
+
+      const jumlah_juri = scores.length;
+      const nilai_rata_rata = jumlah_juri > 0
+        ? Number((scores.reduce((a, b) => a + b, 0) / jumlah_juri).toFixed(2))
+        : null;
+
+      return {
+        id_pendaftaran: pf.id_pendaftaran,
+        nomor_bib: pf.peserta?.nomor_bib || '-',
+        nama_peserta: pf.peserta?.nama_peserta || '-',
+        lomba: pf.jadwal?.jenisLomba?.nama_lomba || '-',
+        kategori: pf.jadwal?.kategori?.nama_kategori || '-',
+        tanggal_lomba: pf.jadwal?.tanggal_lomba || null,
+        jumlah_juri_menilai: jumlah_juri,
+        nilai_rata_rata,
+        penilaian_detail: pf.penilaian
+      };
+    });
+
+    // 3. Sort by nilai_rata_rata DESC (null last)
+    aggregated.sort((a, b) => {
+      if (a.nilai_rata_rata === null && b.nilai_rata_rata === null) return 0;
+      if (a.nilai_rata_rata === null) return 1;
+      if (b.nilai_rata_rata === null) return -1;
+      return b.nilai_rata_rata - a.nilai_rata_rata;
+    });
+
+    return res.json({ success: true, data: aggregated });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
