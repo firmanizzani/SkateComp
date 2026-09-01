@@ -47,8 +47,40 @@ export default function AdminRekapPage() {
     fetchRekap();
   }, []);
 
+  const sortKategoriList = (list: string[]) => {
+    const getAgeOrder = (str: string) => {
+      const s = str.toUpperCase();
+      if (s.includes('U9')) return 1;
+      if (s.includes('U12')) return 2;
+      if (s.includes('YOUTH')) return 3;
+      if (s.includes('JUNIOR')) return 4;
+      if (s.includes('SENIOR')) return 5;
+      return 6;
+    };
+
+    const getGenderOrder = (str: string) => {
+      const s = str.toUpperCase();
+      if (s.includes('WOMEN') || s.includes('PEREMPUAN')) return 2;
+      if (s.includes('MEN') || s.includes('LAKI-LAKI') || s.includes('PRIA')) return 1;
+      return 3;
+    };
+
+    return [...list].sort((a, b) => {
+      const ageA = getAgeOrder(a);
+      const ageB = getAgeOrder(b);
+      if (ageA !== ageB) return ageA - ageB;
+
+      const genderA = getGenderOrder(a);
+      const genderB = getGenderOrder(b);
+      if (genderA !== genderB) return genderA - genderB;
+
+      return a.localeCompare(b);
+    });
+  };
+
   const uniqueLomba = Array.from(new Set(hasilList.map(h => h.lomba))).filter(Boolean);
-  const uniqueKategori = Array.from(new Set(hasilList.map(h => h.kategori))).filter(Boolean);
+  const rawKategori = Array.from(new Set(hasilList.map(h => h.kategori))).filter(Boolean);
+  const uniqueKategori = sortKategoriList(rawKategori);
 
   const filteredHasil = hasilList.filter(h => {
     const matchLomba = filterLomba === 'Semua' || h.lomba === filterLomba;

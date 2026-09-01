@@ -58,8 +58,40 @@ export default function AdminPesertaPage() {
     fetchPeserta();
   }, []);
 
+  const sortKategoriList = (list: string[]) => {
+    const getAgeOrder = (str: string) => {
+      const s = str.toUpperCase();
+      if (s.includes('U9')) return 1;
+      if (s.includes('U12')) return 2;
+      if (s.includes('YOUTH')) return 3;
+      if (s.includes('JUNIOR')) return 4;
+      if (s.includes('SENIOR')) return 5;
+      return 6;
+    };
+
+    const getGenderOrder = (str: string) => {
+      const s = str.toUpperCase();
+      if (s.includes('WOMEN') || s.includes('PEREMPUAN')) return 2;
+      if (s.includes('MEN') || s.includes('LAKI-LAKI') || s.includes('PRIA')) return 1;
+      return 3;
+    };
+
+    return [...list].sort((a, b) => {
+      const ageA = getAgeOrder(a);
+      const ageB = getAgeOrder(b);
+      if (ageA !== ageB) return ageA - ageB;
+
+      const genderA = getGenderOrder(a);
+      const genderB = getGenderOrder(b);
+      if (genderA !== genderB) return genderA - genderB;
+
+      return a.localeCompare(b);
+    });
+  };
+
   const uniqueLomba = Array.from(new Set(pesertaList.flatMap(p => p.lombaList))).filter(Boolean);
-  const uniqueKategori = Array.from(new Set(pesertaList.flatMap(p => p.kategoriList))).filter(Boolean);
+  const rawKategori = Array.from(new Set(pesertaList.flatMap(p => p.kategoriList))).filter(Boolean);
+  const uniqueKategori = sortKategoriList(rawKategori);
 
   const filteredPeserta = pesertaList.filter(p => {
     const matchLomba = filterLomba === 'Semua' || p.lombaList.includes(filterLomba);
