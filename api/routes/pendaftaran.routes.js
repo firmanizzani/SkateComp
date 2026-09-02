@@ -38,9 +38,19 @@ router.post('/', verifyToken, requireRole('peserta'), async (req, res) => {
     const existing = await prisma.pendaftaran.findFirst({ where: { id_peserta, id_jadwal } });
     if (existing) return res.status(409).json({ success: false, message: 'Anda sudah mendaftar pada jadwal ini.' });
 
-    // Auto-generate ID
-    const count = await prisma.pendaftaran.count();
-    const id_pendaftaran = `DF${String(count + 1).padStart(3, '0')}`;
+    const jadwal = await prisma.jadwalLomba.findUnique({
+      where: { id_jadwal },
+      include: { jenisLomba: true }
+    });
+
+    if (!jadwal) return res.status(404).json({ success: false, message: 'Jadwal tidak ditemukan.' });
+
+    // Auto-generate IDs
+    const countPendaftaran = await prisma.pendaftaran.count();
+    const countPembayaran = await prisma.pembayaran.count();
+
+    const id_pendaftaran = `DF${String(countPendaftaran + 1).padStart(3, '0')}`;
+    const id_pembayaran = `BY${String(countPembayaran + 1).padStart(3, '0')}`;
 
     const pendaftaran = await prisma.pendaftaran.create({
       data: {
@@ -49,8 +59,19 @@ router.post('/', verifyToken, requireRole('peserta'), async (req, res) => {
         id_jadwal,
         tanggal_daftar: new Date(),
         status_pendaftaran: 'Menunggu',
+        pembayaran: {
+          create: {
+            id_pembayaran,
+            tanggal_pembayaran: new Date(),
+            nominal: jadwal.jenisLomba.biaya_pendaftaran,
+            status_pembayaran: 'Menunggu',
+          }
+        }
       },
-      include: { jadwal: { include: { jenisLomba: true, kategori: true } } }
+      include: {
+        jadwal: { include: { jenisLomba: true, kategori: true } },
+        pembayaran: true,
+      }
     });
 
     return res.status(201).json({ success: true, message: 'Pendaftaran berhasil dikirim. Menunggu verifikasi admin.', data: pendaftaran });
@@ -69,6 +90,18 @@ router.patch('/:id/status', verifyToken, requireRole('admin'), async (req, res) 
 
     let updateData = { status_pendaftaran };
 
+    // Update status_pembayaran in pembayaran table as well
+    const targetStatusPembayaran = status_pendaftaran === 'Terverifikasi'
+      ? 'Lunas'
+      : status_pendaftaran === 'Ditolak'
+      ? 'Ditolak'
+      : 'Menunggu';
+
+    await prisma.pembayaran.updateMany({
+      where: { id_pendaftaran: req.params.id },
+      data: { status_pembayaran: targetStatusPembayaran }
+    });
+
     // If approved, assign BIB number automatically if not set
     if (status_pendaftaran === 'Terverifikasi') {
       const pd = await prisma.pendaftaran.findUnique({ where: { id_pendaftaran: req.params.id }, include: { peserta: true } });
@@ -82,7 +115,10 @@ router.patch('/:id/status', verifyToken, requireRole('admin'), async (req, res) 
     const updated = await prisma.pendaftaran.update({
       where: { id_pendaftaran: req.params.id },
       data: updateData,
-      include: { peserta: { select: { nama_peserta: true, nomor_bib: true } } }
+      include: {
+        peserta: { select: { nama_peserta: true, nomor_bib: true } },
+        pembayaran: true
+      }
     });
     return res.json({ success: true, message: `Status pendaftaran berhasil diubah ke ${status_pendaftaran}.`, data: updated });
   } catch (err) {
