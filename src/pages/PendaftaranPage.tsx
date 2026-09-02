@@ -491,7 +491,10 @@ export default function PendaftaranPage() {
         const res = await apiFetch('/api/pendaftaran', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_jadwal: matchingJadwal.id_jadwal }),
+          body: JSON.stringify({
+            id_jadwal: matchingJadwal.id_jadwal,
+            bukti_pembayaran: bukti?.name || 'bukti_pembayaran.png'
+          }),
         });
 
         const data = await res.json();
