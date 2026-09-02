@@ -266,10 +266,36 @@ export default function AdminDashboardPage() {
               {/* Preview Bukti Pembayaran */}
               <div className="mt-4 pt-2">
                 <p className="text-xs text-gray-400 mb-2 font-semibold">Bukti Pembayaran (File Transaksi):</p>
-                <div className="p-4 rounded-xl border border-white/10 flex flex-col items-center justify-center bg-black/30 gap-2">
-                  <Image size={32} className="text-purple-400" />
-                  <span className="text-xs font-mono text-gray-300">{selectedItem.pembayaran?.bukti_pembayaran || 'bukti_transfer.png'}</span>
-                  <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded">Telah diunggah oleh peserta</span>
+                <div className="p-3 rounded-xl border border-white/10 flex flex-col items-center justify-center bg-black/40 gap-2 overflow-hidden">
+                  {selectedItem.pembayaran?.bukti_pembayaran &&
+                  (selectedItem.pembayaran.bukti_pembayaran.startsWith('data:image/') ||
+                   selectedItem.pembayaran.bukti_pembayaran.startsWith('http')) ? (
+                    <div className="w-full flex flex-col items-center gap-2">
+                      <img
+                        src={selectedItem.pembayaran.bukti_pembayaran}
+                        alt="Bukti Pembayaran"
+                        className="max-h-64 rounded-lg object-contain border border-white/10 w-full bg-black/60"
+                      />
+                      <a
+                        href={selectedItem.pembayaran.bukti_pembayaran}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-purple-400 hover:underline"
+                      >
+                        Buka Gambar di Tab Baru ↗
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-4">
+                      <Image size={36} className="text-purple-400" />
+                      <span className="text-xs font-mono text-gray-300">
+                        {selectedItem.pembayaran?.bukti_pembayaran || 'bukti_transfer.png'}
+                      </span>
+                      <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded">
+                        Telah diunggah oleh peserta
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

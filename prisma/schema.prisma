@@ -132,7 +132,7 @@ model Pembayaran {
   id_pendaftaran     String           @unique
   tanggal_pembayaran DateTime         @db.Date
   nominal            Decimal          @db.Decimal(10, 2)
-  bukti_pembayaran   String?          @db.VarChar(255)
+  bukti_pembayaran   String?          @db.Text
   status_pembayaran  StatusPembayaran @default(Menunggu)
 
   pendaftaran Pendaftaran @relation(fields: [id_pendaftaran], references: [id_pendaftaran])

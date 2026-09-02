@@ -465,6 +465,15 @@ export default function PendaftaranPage() {
     setStep(s => s - 1);
   };
 
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const handleSubmit = async () => {
     if (!validate()) return;
     if (!user) return;
@@ -472,6 +481,15 @@ export default function PendaftaranPage() {
     setError('');
 
     try {
+      let buktiDataUrl = '';
+      if (bukti) {
+        try {
+          buktiDataUrl = await convertFileToBase64(bukti);
+        } catch (e) {
+          console.error('Gagal membaca file bukti', e);
+        }
+      }
+
       const createdIds: string[] = [];
 
       for (const lomba of selectedLomba) {
@@ -493,7 +511,7 @@ export default function PendaftaranPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id_jadwal: matchingJadwal.id_jadwal,
-            bukti_pembayaran: bukti?.name || 'bukti_pembayaran.png'
+            bukti_pembayaran: buktiDataUrl || bukti?.name || 'bukti_pembayaran.png'
           }),
         });
 
