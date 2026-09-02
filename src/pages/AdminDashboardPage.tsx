@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { formatRupiah } from '../lib/data';
 import { apiFetch } from '../lib/api';
-import { Users, FileText, Check, X, ShieldAlert, Award } from 'lucide-react';
+import { Users, FileText, Check, X, ShieldAlert, Award, Eye, Image } from 'lucide-react';
 
 interface Pendaftaran {
   id_pendaftaran: string;
@@ -16,6 +16,7 @@ interface Pendaftaran {
     id_pembayaran: string;
     status_pembayaran: string;
     nominal: number;
+    bukti_pembayaran?: string;
   };
   peserta: {
     nama_peserta: string;
@@ -25,6 +26,7 @@ interface Pendaftaran {
 
 export default function AdminDashboardPage() {
   const [pendaftaranList, setPendaftaranList] = useState<Pendaftaran[]>([]);
+  const [selectedItem, setSelectedItem] = useState<Pendaftaran | null>(null);
   const [stats, setStats] = useState({
     totalPeserta: 0,
     totalJuri: 0,
@@ -59,14 +61,18 @@ export default function AdminDashboardPage() {
 
   const pendingRegistrations = pendaftaranList.filter(p => p.status_pendaftaran === 'Menunggu');
 
-  const handleUpdateStatus = async (id: string, newStatus: 'Terverifikasi' | 'Ditolak') => {
+  const handleUpdateStatus = async (id: string, newStatusPendaftaran: 'Terverifikasi' | 'Ditolak', newStatusPembayaran?: 'Lunas' | 'Ditolak') => {
     try {
       const res = await apiFetch(`/api/pendaftaran/${id}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status_pendaftaran: newStatus })
+        body: JSON.stringify({
+          status_pendaftaran: newStatusPendaftaran,
+          status_pembayaran: newStatusPembayaran || (newStatusPendaftaran === 'Terverifikasi' ? 'Lunas' : 'Ditolak')
+        })
       });
       const data = await res.json();
       if (data.success) {
+        setSelectedItem(null);
         fetchData();
       } else {
         alert(data.message || 'Gagal mengubah status pendaftaran');
@@ -191,16 +197,23 @@ export default function AdminDashboardPage() {
                       </td>
                       <td className="py-4 text-right pr-2 space-x-2">
                         <button
-                          onClick={() => handleUpdateStatus(p.id_pendaftaran, 'Terverifikasi')}
+                          onClick={() => setSelectedItem(p)}
+                          className="p-1.5 rounded-lg bg-purple-600/30 hover:bg-purple-600 text-purple-300 hover:text-white transition inline-flex items-center justify-center border border-purple-500/30"
+                          title="Lihat Detail & Bukti Pembayaran"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(p.id_pendaftaran, 'Terverifikasi', 'Lunas')}
                           className="p-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white transition inline-flex items-center justify-center"
-                          title="Setujui & Beri BIB"
+                          title="Setujui (Lunas & Beri BIB)"
                         >
                           <Check size={16} />
                         </button>
                         <button
-                          onClick={() => handleUpdateStatus(p.id_pendaftaran, 'Ditolak')}
+                          onClick={() => handleUpdateStatus(p.id_pendaftaran, 'Ditolak', 'Ditolak')}
                           className="p-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition inline-flex items-center justify-center"
-                          title="Tolak Pendaftaran"
+                          title="Tolak Pendaftaran & Pembayaran"
                         >
                           <X size={16} />
                         </button>
@@ -214,6 +227,70 @@ export default function AdminDashboardPage() {
         </div>
 
       </div>
+
+      {/* Modal Detail & Bukti Pembayaran */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.8)' }} onClick={() => setSelectedItem(null)}>
+          <div className="rounded-2xl p-6 w-full max-w-lg" style={{ background: '#1A1428', border: '1px solid #2D2440' }} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/10">
+              <h3 className="text-base font-bold text-white">Detail & Bukti Pembayaran</h3>
+              <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-white"><X size={18} /></button>
+            </div>
+
+            <div className="space-y-3 text-sm text-[#F1EEF8]">
+              <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">ID Pendaftaran</span>
+                <span className="font-mono text-purple-400">{selectedItem.id_pendaftaran}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">Nama Peserta</span>
+                <span className="font-semibold text-white">{selectedItem.peserta?.nama_peserta}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">Lomba & Kategori</span>
+                <span>{selectedItem.jadwal?.jenisLomba?.nama_lomba} ({selectedItem.jadwal?.kategori?.nama_kategori})</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">Nominal Biaya</span>
+                <span className="font-bold text-yellow-400">{formatRupiah(Number(selectedItem.jadwal?.jenisLomba?.biaya_pendaftaran))}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">Status Pendaftaran</span>
+                <span className="text-yellow-400 font-medium">{selectedItem.status_pendaftaran}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">Status Pembayaran</span>
+                <span className="text-yellow-400 font-medium">{selectedItem.pembayaran?.status_pembayaran || 'Menunggu'}</span>
+              </div>
+
+              {/* Preview Bukti Pembayaran */}
+              <div className="mt-4 pt-2">
+                <p className="text-xs text-gray-400 mb-2 font-semibold">Bukti Pembayaran (File Transaksi):</p>
+                <div className="p-4 rounded-xl border border-white/10 flex flex-col items-center justify-center bg-black/30 gap-2">
+                  <Image size={32} className="text-purple-400" />
+                  <span className="text-xs font-mono text-gray-300">{selectedItem.pembayaran?.bukti_pembayaran || 'bukti_transfer.png'}</span>
+                  <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded">Telah diunggah oleh peserta</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6 pt-3 border-t border-white/10">
+              <button
+                onClick={() => handleUpdateStatus(selectedItem.id_pendaftaran, 'Terverifikasi', 'Lunas')}
+                className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold text-sm transition"
+              >
+                Setujui & Tandai Lunas
+              </button>
+              <button
+                onClick={() => handleUpdateStatus(selectedItem.id_pendaftaran, 'Ditolak', 'Ditolak')}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition"
+              >
+                Tolak Transaksi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

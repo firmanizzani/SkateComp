@@ -29,7 +29,7 @@ router.get('/', verifyToken, async (req, res) => {
 // POST /api/pendaftaran - Peserta only: register for an event
 router.post('/', verifyToken, requireRole('peserta'), async (req, res) => {
   try {
-    const { id_jadwal } = req.body;
+    const { id_jadwal, bukti_pembayaran } = req.body;
     if (!id_jadwal) return res.status(400).json({ success: false, message: 'id_jadwal wajib diisi.' });
 
     const id_peserta = req.user.id;
@@ -64,6 +64,7 @@ router.post('/', verifyToken, requireRole('peserta'), async (req, res) => {
             id_pembayaran,
             tanggal_pembayaran: new Date(),
             nominal: jadwal.jenisLomba.biaya_pendaftaran,
+            bukti_pembayaran: bukti_pembayaran || 'bukti_transfer.png',
             status_pembayaran: 'Menunggu',
           }
         }
@@ -83,19 +84,13 @@ router.post('/', verifyToken, requireRole('peserta'), async (req, res) => {
 // PATCH /api/pendaftaran/:id/status - Admin only: approve/reject
 router.patch('/:id/status', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    const { status_pendaftaran } = req.body;
-    if (!['Terverifikasi', 'Ditolak', 'Menunggu'].includes(status_pendaftaran)) {
-      return res.status(400).json({ success: false, message: 'Status tidak valid.' });
+    const { status_pendaftaran, status_pembayaran } = req.body;
+    if (status_pendaftaran && !['Terverifikasi', 'Ditolak', 'Menunggu'].includes(status_pendaftaran)) {
+      return res.status(400).json({ success: false, message: 'Status pendaftaran tidak valid.' });
     }
 
-    let updateData = { status_pendaftaran };
-
-    // Update status_pembayaran in pembayaran table as well
-    const targetStatusPembayaran = status_pendaftaran === 'Terverifikasi'
-      ? 'Lunas'
-      : status_pendaftaran === 'Ditolak'
-      ? 'Ditolak'
-      : 'Menunggu';
+    let targetStatusPendaftaran = status_pendaftaran || 'Menunggu';
+    let targetStatusPembayaran = status_pembayaran || (targetStatusPendaftaran === 'Terverifikasi' ? 'Lunas' : targetStatusPendaftaran === 'Ditolak' ? 'Ditolak' : 'Menunggu');
 
     await prisma.pembayaran.updateMany({
       where: { id_pendaftaran: req.params.id },
@@ -103,7 +98,7 @@ router.patch('/:id/status', verifyToken, requireRole('admin'), async (req, res) 
     });
 
     // If approved, assign BIB number automatically if not set
-    if (status_pendaftaran === 'Terverifikasi') {
+    if (targetStatusPendaftaran === 'Terverifikasi') {
       const pd = await prisma.pendaftaran.findUnique({ where: { id_pendaftaran: req.params.id }, include: { peserta: true } });
       if (pd && !pd.peserta.nomor_bib) {
         const bibCount = await prisma.peserta.count({ where: { nomor_bib: { not: null } } });
@@ -114,13 +109,13 @@ router.patch('/:id/status', verifyToken, requireRole('admin'), async (req, res) 
 
     const updated = await prisma.pendaftaran.update({
       where: { id_pendaftaran: req.params.id },
-      data: updateData,
+      data: { status_pendaftaran: targetStatusPendaftaran },
       include: {
         peserta: { select: { nama_peserta: true, nomor_bib: true } },
         pembayaran: true
       }
     });
-    return res.json({ success: true, message: `Status pendaftaran berhasil diubah ke ${status_pendaftaran}.`, data: updated });
+    return res.json({ success: true, message: `Status berhasil diubah.`, data: updated });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
