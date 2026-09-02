@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
+const supabase = require('../lib/supabase');
 const { verifyToken, requireRole } = require('../middleware/auth.middleware');
 
 // GET /api/pendaftaran - Admin: all, Peserta: own
@@ -65,6 +66,40 @@ router.post('/', verifyToken, requireRole('peserta'), async (req, res) => {
     const id_pendaftaran = `DF${seqStr}`;
     const id_pembayaran = `PB${seqStr}`;
 
+    // Upload bukti pembayaran ke Supabase Storage jika ada (Base64 Data URL)
+    let buktiPublicUrl = null;
+    if (bukti_pembayaran && bukti_pembayaran.startsWith('data:')) {
+      try {
+        // Pisahkan header dan data dari Base64 data URL
+        const matches = bukti_pembayaran.match(/^data:(.+);base64,(.+)$/);
+        if (matches) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          const ext = mimeType.split('/')[1]?.split('+')[0] || 'jpg';
+          const fileName = `${id_pendaftaran}_${Date.now()}.${ext}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('bukti-pembayaran')
+            .upload(fileName, buffer, {
+              contentType: mimeType,
+              upsert: false,
+            });
+
+          if (!uploadError) {
+            const { data: publicUrlData } = supabase.storage
+              .from('bukti-pembayaran')
+              .getPublicUrl(fileName);
+            buktiPublicUrl = publicUrlData?.publicUrl || null;
+          } else {
+            console.error('Upload Storage gagal:', uploadError.message);
+          }
+        }
+      } catch (uploadErr) {
+        console.error('Error saat upload bukti:', uploadErr.message);
+      }
+    }
+
     const pendaftaran = await prisma.pendaftaran.create({
       data: {
         id_pendaftaran,
@@ -77,7 +112,7 @@ router.post('/', verifyToken, requireRole('peserta'), async (req, res) => {
             id_pembayaran,
             tanggal_pembayaran: new Date(),
             nominal: jadwal.jenisLomba.biaya_pendaftaran,
-            bukti_pembayaran: bukti_pembayaran || 'bukti_transfer.png',
+            bukti_pembayaran: buktiPublicUrl,
             status_pembayaran: 'Menunggu',
           }
         }
