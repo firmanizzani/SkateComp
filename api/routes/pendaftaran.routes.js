@@ -45,12 +45,25 @@ router.post('/', verifyToken, requireRole('peserta'), async (req, res) => {
 
     if (!jadwal) return res.status(404).json({ success: false, message: 'Jadwal tidak ditemukan.' });
 
-    // Auto-generate IDs
-    const countPendaftaran = await prisma.pendaftaran.count();
-    const countPembayaran = await prisma.pembayaran.count();
+    // Auto-generate synced IDs: DF001 <-> PB001
+    const lastPendaftaran = await prisma.pendaftaran.findFirst({
+      orderBy: { id_pendaftaran: 'desc' }
+    });
 
-    const id_pendaftaran = `DF${String(countPendaftaran + 1).padStart(3, '0')}`;
-    const id_pembayaran = `BY${String(countPembayaran + 1).padStart(3, '0')}`;
+    let nextNum = 1;
+    if (lastPendaftaran && lastPendaftaran.id_pendaftaran) {
+      const match = lastPendaftaran.id_pendaftaran.match(/\d+/);
+      if (match) {
+        nextNum = parseInt(match[0], 10) + 1;
+      }
+    } else {
+      const count = await prisma.pendaftaran.count();
+      nextNum = count + 1;
+    }
+
+    const seqStr = String(nextNum).padStart(3, '0');
+    const id_pendaftaran = `DF${seqStr}`;
+    const id_pembayaran = `PB${seqStr}`;
 
     const pendaftaran = await prisma.pendaftaran.create({
       data: {
