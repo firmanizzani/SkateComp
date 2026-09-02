@@ -237,13 +237,15 @@ export default function AdminRekapPage() {
                 ) : (
                   sortedHasil.map((h, index) => {
                     const rank = index + 1;
+                    const isScoreAscending = sortField === 'score' && sortDirection === 'asc';
+                    const showMedal = !isScoreAscending;
                     return (
                       <tr key={h.id_pendaftaran} className="hover:bg-white/2 transition-colors">
                         <td className="py-4 pl-2 font-bold">
-                          {rank === 1 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-black text-xs font-bold" title="Juara 1">🥇</span>}
-                          {rank === 2 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300 text-black text-xs font-bold" title="Juara 2">🥈</span>}
-                          {rank === 3 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-600 text-black text-xs font-bold" title="Juara 3">🥉</span>}
-                          {rank > 3 && <span className="pl-1.5 text-xs text-[#8B7DAB]">{rank}</span>}
+                          {showMedal && rank === 1 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500 text-black text-xs font-bold" title="Juara 1">🥇</span>}
+                          {showMedal && rank === 2 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300 text-black text-xs font-bold" title="Juara 2">🥈</span>}
+                          {showMedal && rank === 3 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-600 text-black text-xs font-bold" title="Juara 3">🥉</span>}
+                          {(!showMedal || rank > 3) && <span className="pl-1.5 text-xs text-[#8B7DAB]">{rank}</span>}
                         </td>
                         <td className="py-4 font-mono text-xs">{h.nomor_bib}</td>
                         <td className="py-4 font-semibold text-white truncate" title={h.nama_peserta}>{h.nama_peserta}</td>
