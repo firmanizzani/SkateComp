@@ -20,6 +20,9 @@ dist-ssr
 # Do not push database SQL files (as requested)
 *.sql
 
+# Do not push Prisma seed script
+prisma/seed.cjs
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
