@@ -40,7 +40,7 @@ export default function App() {
           <Route path="/jadwal-lomba" element={<ProtectedRoute allowedRoles={['peserta']}><JadwalLombaPage /></ProtectedRoute>} />
           <Route path="/pendaftaran" element={<ProtectedRoute allowedRoles={['peserta']}><PendaftaranPage /></ProtectedRoute>} />
           <Route path="/riwayat-daftar" element={<ProtectedRoute allowedRoles={['peserta']}><RiwayatDaftarPage /></ProtectedRoute>} />
-          <Route path="/hasil-perlombaan" element={<ProtectedRoute allowedRoles={['peserta']}><HasilPerlombaanPage /></ProtectedRoute>} />
+          <Route path="/hasil-perlombaan" element={<ProtectedRoute allowedRoles={['peserta', 'juri', 'admin']}><HasilPerlombaanPage /></ProtectedRoute>} />
           <Route path="/pengaturan-akun" element={<ProtectedRoute allowedRoles={['peserta', 'juri', 'admin']}><PengaturanAkunPage /></ProtectedRoute>} />
 
           {/* Protected - Juri Only */}

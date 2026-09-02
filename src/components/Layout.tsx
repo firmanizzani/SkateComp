@@ -51,12 +51,13 @@ export default function Layout({ children, title }: { children: React.ReactNode;
   } else if (user?.role === 'juri') {
     navItems = [
       { label: 'Dashboard Juri', path: '/juri/dashboard', icon: LayoutDashboard },
+      { label: 'Hasil Perlombaan', path: '/hasil-perlombaan', icon: Trophy },
       { label: 'Pengaturan Akun', path: '/pengaturan-akun', icon: Settings },
     ];
 
     bottomNav = [
       { label: 'Home', path: '/juri/dashboard', icon: Home },
-      { label: 'Profil', path: '/profil', icon: User },
+      { label: 'Hasil', path: '/hasil-perlombaan', icon: Trophy },
       { label: 'Settings', path: '/pengaturan-akun', icon: Settings },
     ];
   }
