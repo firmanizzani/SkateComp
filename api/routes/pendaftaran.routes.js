@@ -35,16 +35,24 @@ router.post('/', verifyToken, requireRole('peserta'), async (req, res) => {
 
     const id_peserta = req.user.id;
 
-    // Prevent duplicate registration
-    const existing = await prisma.pendaftaran.findFirst({ where: { id_peserta, id_jadwal } });
-    if (existing) return res.status(409).json({ success: false, message: 'Anda sudah mendaftar pada jadwal ini.' });
-
     const jadwal = await prisma.jadwalLomba.findUnique({
       where: { id_jadwal },
       include: { jenisLomba: true }
     });
 
     if (!jadwal) return res.status(404).json({ success: false, message: 'Jadwal tidak ditemukan.' });
+
+    // Prevent duplicate registration for the same jenis_lomba
+    const existing = await prisma.pendaftaran.findFirst({
+      where: {
+        id_peserta,
+        status_pendaftaran: { in: ['Menunggu', 'Terverifikasi'] },
+        jadwal: {
+          id_jenis_lomba: jadwal.id_jenis_lomba
+        }
+      }
+    });
+    if (existing) return res.status(409).json({ success: false, message: `Anda sudah mendaftar pada jenis lomba ${jadwal.jenisLomba.nama_lomba}.` });
 
     // Auto-generate synced IDs: DF001 <-> PB001
     const lastPendaftaran = await prisma.pendaftaran.findFirst({

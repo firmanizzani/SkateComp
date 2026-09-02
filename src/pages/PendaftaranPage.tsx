@@ -42,13 +42,15 @@ function StepIndicator({ current }: { current: number }) {
 }
 
 // ─── STEP 1: Pilih Lomba ────────────────────────────────────────
-function Step1({ selected, onSelect, kategori, setKategori, availableKategori }: {
+function Step1({ selected, onSelect, kategori, setKategori, availableKategori, registeredLombaNames }: {
   selected: string[]; onSelect: (id: string) => void;
   kategori: string; setKategori: (k: string) => void;
   availableKategori: string[];
+  registeredLombaNames: string[];
 }) {
   const LombaCard = ({ lomba }: { lomba: typeof LOMBA_LIST[0] }) => {
     const active = selected.includes(lomba.id);
+    const isRegistered = registeredLombaNames.includes(lomba.nama);
     const iconMap: Record<string, React.ReactNode> = {
       'Classic Slalom': <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><polygon points="16,2 22,14 10,14" fill="#A78BFA"/><circle cx="16" cy="22" r="8" fill="#7C3AED" opacity="0.7"/></svg>,
       'Freestyle Slide': <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="20" cy="7" r="4" fill="#A78BFA"/><path d="M6 26 C6 26, 11 16, 16 14 C19 13, 21 14, 22 16 L25 24" stroke="#7C3AED" strokeWidth="2.5" strokeLinecap="round" fill="none"/><circle cx="12" cy="27" r="2.5" fill="#7C3AED"/><circle cx="23" cy="27" r="2.5" fill="#7C3AED"/></svg>,
@@ -58,11 +60,15 @@ function Step1({ selected, onSelect, kategori, setKategori, availableKategori }:
 
     return (
       <button
-        onClick={() => onSelect(lomba.id)}
+        type="button"
+        disabled={isRegistered}
+        onClick={() => !isRegistered && onSelect(lomba.id)}
         className="rounded-xl p-4 flex flex-col items-start gap-3 w-full transition-all border-2"
         style={{
-          background: active ? '#2D1B69' : '#1A1428',
-          borderColor: active ? '#7C3AED' : '#2D2440',
+          background: isRegistered ? '#1A1428' : active ? '#2D1B69' : '#1A1428',
+          borderColor: isRegistered ? '#2D2440' : active ? '#7C3AED' : '#2D2440',
+          opacity: isRegistered ? 0.65 : 1,
+          cursor: isRegistered ? 'not-allowed' : 'pointer',
         }}
       >
         <div className="flex items-start justify-between w-full">
@@ -75,7 +81,15 @@ function Step1({ selected, onSelect, kategori, setKategori, availableKategori }:
               <p className="text-sm font-medium" style={{ color: '#A78BFA' }}>{formatRupiah(lomba.biaya)}</p>
             </div>
           </div>
-          {active && <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-1" style={{ background: '#7C3AED' }}><Check size={12} color="#fff" /></div>}
+          {isRegistered ? (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-md flex items-center gap-1 border" style={{ background: '#10B98120', color: '#10B981', borderColor: '#10B98140' }}>
+              <Check size={12} /> Sudah Terdaftar
+            </span>
+          ) : active ? (
+            <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-1" style={{ background: '#7C3AED' }}>
+              <Check size={12} color="#fff" />
+            </div>
+          ) : null}
         </div>
       </button>
     );
@@ -415,6 +429,7 @@ export default function PendaftaranPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [dbJadwalList, setDbJadwalList] = useState<any[]>([]);
+  const [userPendaftaran, setUserPendaftaran] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchJadwal = async () => {
@@ -428,17 +443,46 @@ export default function PendaftaranPage() {
         console.error('Gagal mengambil data jadwal', err);
       }
     };
+
+    const fetchUserPendaftaran = async () => {
+      try {
+        const res = await apiFetch('/api/pendaftaran');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setUserPendaftaran(data.data);
+        }
+      } catch (err) {
+        console.error('Gagal mengambil data pendaftaran user', err);
+      }
+    };
+
     fetchJadwal();
+    fetchUserPendaftaran();
   }, []);
+
+  const registeredLombaNames: string[] = userPendaftaran
+    .filter(p => p.status_pendaftaran !== 'Ditolak')
+    .map(p => p.jadwal?.jenisLomba?.nama_lomba)
+    .filter(Boolean);
 
   const availableKategori = user
     ? [getKategoriFromProfile(user.jenisKelamin ?? '', user.tanggalLahir ?? '')]
     : [];
 
+  useEffect(() => {
+    if (availableKategori.length > 0 && !kategori) {
+      setKategori(availableKategori[0]);
+    }
+  }, [availableKategori, kategori]);
+
   const selectedLomba = LOMBA_LIST.filter(l => selectedLombaIds.includes(l.id));
   const total = selectedLomba.reduce((s, l) => s + l.biaya, 0);
 
   const toggleLomba = (id: string) => {
+    const lombaObj = LOMBA_LIST.find(l => l.id === id);
+    if (lombaObj && registeredLombaNames.includes(lombaObj.nama)) {
+      return;
+    }
     setSelectedLombaIds(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
@@ -447,6 +491,8 @@ export default function PendaftaranPage() {
   const validate = () => {
     if (step === 1) {
       if (selectedLombaIds.length === 0) { setError('Pilih minimal 1 jenis lomba'); return false; }
+      const hasRegisteredChoice = selectedLomba.some(l => registeredLombaNames.includes(l.nama));
+      if (hasRegisteredChoice) { setError('Anda sudah mendaftar pada jenis lomba tersebut'); return false; }
       if (!kategori) { setError('Pilih kategori'); return false; }
     }
     if (step === 3 && !agreed) { setError('Centang persetujuan peraturan'); return false; }
@@ -595,6 +641,7 @@ export default function PendaftaranPage() {
                   kategori={kategori}
                   setKategori={setKategori}
                   availableKategori={availableKategori}
+                  registeredLombaNames={registeredLombaNames}
                 />
               )}
               {step === 2 && <Step2 user={user} />}
