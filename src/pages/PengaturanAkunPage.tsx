@@ -157,7 +157,7 @@ export default function PengaturanAkunPage() {
                 <div className="mt-3 rounded-lg px-4 py-3 flex items-center gap-2" style={{ background: '#10B98110', border: '1px solid #10B98133' }}>
                   <CheckCircle size={15} style={{ color: '#10B981' }} />
                   <div>
-                    <p className="text-xs font-bold" style={{ color: '#10B981' }}>✓ Akun Aktif</p>
+                    <p className="text-xs font-bold" style={{ color: '#10B981' }}>Akun Aktif</p>
                     <p className="text-xs" style={{ color: '#8B7DAB' }}>Akun Anda dalam kondisi aktif dan terverifikasi.</p>
                   </div>
                 </div>
