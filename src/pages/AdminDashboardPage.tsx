@@ -12,6 +12,11 @@ interface Pendaftaran {
   };
   tanggal_daftar: string;
   status_pendaftaran: string;
+  pembayaran?: {
+    id_pembayaran: string;
+    status_pembayaran: string;
+    nominal: number;
+  };
   peserta: {
     nama_peserta: string;
     nomor_bib?: string;
@@ -138,7 +143,7 @@ export default function AdminDashboardPage() {
         <div className="p-6 rounded-2xl" style={{ background: '#120D1E', border: '1px solid #2D2440' }}>
           <h2 className="text-lg font-bold text-white mb-4">Verifikasi Pendaftaran & Pembayaran</h2>
           <p className="text-sm mb-6" style={{ color: '#8B7DAB' }}>
-            Verifikasi pendaftaran peserta yang masuk untuk menghasilkan Nomor BIB peserta secara otomatis.
+            Verifikasi pendaftaran dan pembayaran peserta yang masuk untuk menghasilkan Nomor BIB peserta secara otomatis.
           </p>
 
           <div className="overflow-x-auto">
@@ -150,14 +155,15 @@ export default function AdminDashboardPage() {
                   <th className="pb-3">Lomba</th>
                   <th className="pb-3">Kategori</th>
                   <th className="pb-3">Biaya</th>
-                  <th className="pb-3">Status</th>
+                  <th className="pb-3">Status Pendaftaran</th>
+                  <th className="pb-3">Status Pembayaran</th>
                   <th className="pb-3 text-right pr-2">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-sm text-[#F1EEF8]">
                 {pendingRegistrations.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-gray-500">Semua pendaftaran sudah terverifikasi</td>
+                    <td colSpan={8} className="py-8 text-center text-gray-500">Semua pendaftaran sudah terverifikasi</td>
                   </tr>
                 ) : (
                   pendingRegistrations.map((p) => (
@@ -169,7 +175,18 @@ export default function AdminDashboardPage() {
                       <td className="py-4">{formatRupiah(Number(p.jadwal?.jenisLomba?.biaya_pendaftaran))}</td>
                       <td className="py-4">
                         <span className="inline-flex items-center gap-1 text-xs text-yellow-400 bg-yellow-500/10 px-2.5 py-1 rounded-full font-medium">
-                          Menunggu Verifikasi
+                          {p.status_pendaftaran}
+                        </span>
+                      </td>
+                      <td className="py-4">
+                        <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium ${
+                          p.pembayaran?.status_pembayaran === 'Lunas' 
+                            ? 'text-green-400 bg-green-500/10' 
+                            : p.pembayaran?.status_pembayaran === 'Ditolak'
+                            ? 'text-red-400 bg-red-500/10'
+                            : 'text-yellow-400 bg-yellow-500/10'
+                        }`}>
+                          {p.pembayaran?.status_pembayaran || 'Menunggu'}
                         </span>
                       </td>
                       <td className="py-4 text-right pr-2 space-x-2">

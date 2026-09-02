@@ -1,14 +1,13 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, Upload, Trash2, Info } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../lib/api';
 import {
-  LOMBA_LIST, JADWAL_LIST, getKategoriFromProfile, formatRupiah,
-  getPendaftaran, addPendaftaran, generatePendaftaranId
+  LOMBA_LIST, JADWAL_LIST, getKategoriFromProfile, formatRupiah
 } from '../lib/data';
-import type { Pendaftaran } from '../types';
 
 const STEPS = ['Pilih Lomba', 'Data Peserta', 'Konfirmasi', 'Pembayaran', 'Selesai'];
 
@@ -403,7 +402,7 @@ function Step5({ onLihatRiwayat, onDashboard }: {
 
 // ─── MAIN PAGE ──────────────────────────────────────────────────
 export default function PendaftaranPage() {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
@@ -414,6 +413,23 @@ export default function PendaftaranPage() {
   const [bukti, setBukti] = useState<File | null>(null);
   const [, setPendaftaranIds] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [dbJadwalList, setDbJadwalList] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchJadwal = async () => {
+      try {
+        const res = await apiFetch('/api/lomba/jadwal');
+        const data = await res.json();
+        if (data.success) {
+          setDbJadwalList(data.data || []);
+        }
+      } catch (err) {
+        console.error('Gagal mengambil data jadwal', err);
+      }
+    };
+    fetchJadwal();
+  }, []);
 
   const availableKategori = user
     ? [getKategoriFromProfile(user.jenisKelamin ?? '', user.tanggalLahir ?? '')]
@@ -449,43 +465,54 @@ export default function PendaftaranPage() {
     setStep(s => s - 1);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return;
     if (!user) return;
+    setSubmitting(true);
+    setError('');
 
-    const existing = getPendaftaran();
-    const ids: string[] = [];
+    try {
+      const createdIds: string[] = [];
 
-    selectedLomba.forEach((lomba) => {
-      const jadwal = JADWAL_LIST.find(j => j.lomba === lomba.nama && j.kategori === kategori);
-      const id = generatePendaftaranId([...existing, ...ids.map(i => ({ id: i } as any))]);
-      ids.push(id);
+      for (const lomba of selectedLomba) {
+        // Find matching schedule in database based on nama_lomba and nama_kategori
+        const matchingJadwal = dbJadwalList.find(j => {
+          const matchLomba = j.jenisLomba?.nama_lomba?.toLowerCase() === lomba.nama?.toLowerCase();
+          const matchKategori = j.kategori?.nama_kategori?.toLowerCase() === kategori?.toLowerCase();
+          return matchLomba && matchKategori;
+        });
 
-      const item: Pendaftaran = {
-        id,
-        userId: user.id,
-        lomba: lomba.nama,
-        kategori,
-        tanggalDaftar: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-        tanggalLomba: jadwal?.tanggal || '-',
-        lokasi: jadwal?.lokasi || '-',
-        biaya: lomba.biaya,
-        status: 'Menunggu',
-        metodePembayaran: metode,
-        buktiPembayaran: bukti?.name,
-      };
-      addPendaftaran(item);
-    });
+        if (!matchingJadwal) {
+          setError(`Jadwal tidak ditemukan di database untuk ${lomba.nama} (${kategori}).`);
+          setSubmitting(false);
+          return;
+        }
 
-    // Assign BIB if not yet assigned
-    if (!user.bibNumber) {
-      const allPend = getPendaftaran();
-      const bibNum = String(allPend.length).padStart(3, '0');
-      updateUser({ bibNumber: bibNum });
+        const res = await apiFetch('/api/pendaftaran', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_jadwal: matchingJadwal.id_jadwal }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setError(data.message || 'Gagal mendaftar lomba.');
+          setSubmitting(false);
+          return;
+        }
+
+        if (data.data?.id_pendaftaran) {
+          createdIds.push(data.data.id_pendaftaran);
+        }
+      }
+
+      setPendaftaranIds(createdIds);
+      setStep(5);
+    } catch (err: any) {
+      setError('Gagal menyimpan pendaftaran ke server: ' + (err.message || err));
+    } finally {
+      setSubmitting(false);
     }
-
-    setPendaftaranIds(ids);
-    setStep(5);
   };
 
   return (
@@ -554,7 +581,8 @@ export default function PendaftaranPage() {
               {step > 1 ? (
                 <button
                   onClick={handleBack}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium border transition hover:bg-white/5"
+                  disabled={submitting}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium border transition hover:bg-white/5 disabled:opacity-50"
                   style={{ borderColor: '#2D2440', color: '#F1EEF8' }}
                 >
                   <ArrowLeft size={15} /> Kembali
@@ -572,10 +600,11 @@ export default function PendaftaranPage() {
               ) : (
                 <button
                   onClick={handleSubmit}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90"
+                  disabled={submitting}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
                   style={{ background: '#7C3AED' }}
                 >
-                  Kirim Pembayaran <ArrowRight size={15} />
+                  {submitting ? 'Memproses...' : 'Kirim Pembayaran'} <ArrowRight size={15} />
                 </button>
               )}
             </div>
