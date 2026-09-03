@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
-import { Users, Mail, Phone, Calendar, Search } from 'lucide-react';
+import { Users, Mail, Phone, Calendar, Search, KeyRound, Eye, EyeOff, X } from 'lucide-react';
 
 interface RegistrationPair {
   lomba: string;
@@ -28,6 +28,13 @@ export default function AdminPesertaPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLomba, setFilterLomba] = useState('Semua');
   const [filterKategori, setFilterKategori] = useState('Semua');
+
+  // Change-password modal state
+  const [resetTarget, setResetTarget] = useState<MappedPeserta | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMsg, setResetMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const fetchPeserta = async () => {
@@ -117,6 +124,47 @@ export default function AdminPesertaPage() {
     return matchLomba && matchKategori && matchSearch;
   });
 
+  const openResetModal = (p: MappedPeserta) => {
+    setResetTarget(p);
+    setNewPassword('');
+    setShowPassword(false);
+    setResetMsg(null);
+  };
+
+  const closeResetModal = () => {
+    setResetTarget(null);
+    setNewPassword('');
+    setResetMsg(null);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetTarget) return;
+    if (newPassword.length < 8) {
+      setResetMsg({ type: 'error', text: 'Password minimal 8 karakter.' });
+      return;
+    }
+    setResetLoading(true);
+    setResetMsg(null);
+    try {
+      const res = await apiFetch(`/api/peserta/${resetTarget.id}/reset-password`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResetMsg({ type: 'success', text: 'Password berhasil diubah!' });
+        setTimeout(closeResetModal, 1500);
+      } else {
+        setResetMsg({ type: 'error', text: data.message || 'Gagal mengubah password.' });
+      }
+    } catch {
+      setResetMsg({ type: 'error', text: 'Terjadi kesalahan. Coba lagi.' });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <Layout title="Kelola Peserta">
       <div className="p-6 rounded-2xl space-y-6" style={{ background: '#120D1E', border: '1px solid #2D2440' }}>
@@ -188,22 +236,23 @@ export default function AdminPesertaPage() {
             <thead>
               <tr style={{ borderBottom: '1px solid #2D2440', color: '#8B7DAB' }} className="text-xs font-semibold uppercase">
                 <th className="pb-3 pl-2">Nama Lengkap</th>
-                <th className="pb-3">Lomba & Kategori</th>
+                <th className="pb-3">Lomba &amp; Kategori</th>
                 <th className="pb-3">Kontak</th>
                 <th className="pb-3">Tanggal Lahir</th>
                 <th className="pb-3">Gender</th>
                 <th className="pb-3">BIB</th>
                 <th className="pb-3">Alamat</th>
+                <th className="pb-3">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm text-[#F1EEF8]">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-500">Memuat data peserta...</td>
+                  <td colSpan={8} className="py-8 text-center text-gray-500">Memuat data peserta...</td>
                 </tr>
               ) : filteredPeserta.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-500">Tidak ada peserta yang cocok dengan filter / pencarian</td>
+                  <td colSpan={8} className="py-8 text-center text-gray-500">Tidak ada peserta yang cocok dengan filter / pencarian</td>
                 </tr>
               ) : (
                 filteredPeserta.map((p) => (
@@ -239,6 +288,17 @@ export default function AdminPesertaPage() {
                     <td className="py-4 text-xs text-[#8B7DAB] max-w-[180px] truncate" title={p.alamat}>
                       {p.alamat}
                     </td>
+                    <td className="py-4">
+                      <button
+                        onClick={() => openResetModal(p)}
+                        title="Ganti Password"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition hover:opacity-80"
+                        style={{ background: '#2D1F4A', color: '#C4B5FD', border: '1px solid #4C3880' }}
+                      >
+                        <KeyRound size={13} />
+                        Ganti Password
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -246,6 +306,78 @@ export default function AdminPesertaPage() {
           </table>
         </div>
       </div>
+
+      {/* Reset Password Modal */}
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+          <div className="w-full max-w-md rounded-2xl p-6 space-y-5" style={{ background: '#1A1230', border: '1px solid #3D2D6A' }}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+                  <KeyRound size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">Ganti Password Peserta</h3>
+                  <p className="text-xs mt-0.5" style={{ color: '#8B7DAB' }}>{resetTarget.namaLengkap}</p>
+                </div>
+              </div>
+              <button onClick={closeResetModal} className="text-gray-500 hover:text-white transition">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* New Password Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold" style={{ color: '#8B7DAB' }}>Password Baru</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Minimal 8 karakter"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+                  className="w-full rounded-lg px-4 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-purple-600 transition"
+                  style={{ background: '#0A0710', border: '1px solid #2D2440', color: '#F1EEF8' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-purple-400 transition"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Feedback Message */}
+            {resetMsg && (
+              <p className={`text-xs font-medium px-3 py-2 rounded-lg ${resetMsg.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                {resetMsg.text}
+              </p>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={closeResetModal}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium transition hover:opacity-80"
+                style={{ background: '#2D2440', color: '#8B7DAB', border: '1px solid #3D2D6A' }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleResetPassword}
+                disabled={resetLoading}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium transition hover:opacity-80 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg,#7C3AED,#A855F7)', color: '#fff' }}
+              >
+                {resetLoading ? 'Menyimpan...' : 'Simpan Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
