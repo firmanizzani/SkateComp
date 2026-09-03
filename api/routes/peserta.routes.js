@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
+const bcrypt = require('bcryptjs');
 const { verifyToken, requireRole } = require('../middleware/auth.middleware');
 
 // GET /api/peserta - Admin only: get all peserta
@@ -61,6 +62,28 @@ router.get('/:id', verifyToken, async (req, res) => {
     });
     if (!peserta) return res.status(404).json({ success: false, message: 'Peserta tidak ditemukan.' });
     return res.json({ success: true, data: peserta });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PATCH /api/peserta/:id/reset-password - Admin only: reset peserta password
+router.patch('/:id/reset-password', verifyToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password baru minimal 8 karakter.' });
+    }
+
+    const peserta = await prisma.peserta.findUnique({ where: { id_peserta: id } });
+    if (!peserta) return res.status(404).json({ success: false, message: 'Peserta tidak ditemukan.' });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await prisma.peserta.update({ where: { id_peserta: id }, data: { password: hashed } });
+
+    return res.json({ success: true, message: 'Password peserta berhasil diubah.' });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
