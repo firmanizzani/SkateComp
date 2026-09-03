@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Calendar, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
@@ -104,8 +104,8 @@ export default function RegisterPage() {
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <Logo size="md" />
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(124, 58, 237, 0.2)', border: '1px solid rgba(167, 139, 250, 0.3)', color: '#C4B5FD' }}>
-            <Sparkles size={13} /> Pendaftaran Peserta
+          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(124, 58, 237, 0.2)', border: '1px solid rgba(167, 139, 250, 0.3)', color: '#C4B5FD' }}>
+            Pendaftaran Peserta
           </div>
         </div>
 

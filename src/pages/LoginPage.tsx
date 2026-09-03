@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Trophy, Sparkles } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
@@ -80,8 +80,8 @@ export default function LoginPage() {
           <Logo size="lg" />
           
           <div className="mt-8 mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: 'rgba(124, 58, 237, 0.2)', border: '1px solid rgba(167, 139, 250, 0.3)', color: '#C4B5FD' }}>
-              <Sparkles size={14} /> Portal Resmi Peserta
+            <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: 'rgba(124, 58, 237, 0.2)', border: '1px solid rgba(167, 139, 250, 0.3)', color: '#C4B5FD' }}>
+              Portal Resmi Peserta
             </div>
             <h1 className="text-4xl lg:text-5xl font-extrabold text-white leading-tight mb-4" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
               Selamat Datang <br />
@@ -92,16 +92,6 @@ export default function LoginPage() {
             <p className="text-sm leading-relaxed" style={{ color: '#A094C2' }}>
               Masuk untuk mengelola pendaftaran lomba, memantau nomor BIB, serta melihat hasil perlombaan Inline Skate Anda.
             </p>
-          </div>
-
-          <div className="pt-6 border-t flex items-center gap-3 text-xs" style={{ borderColor: 'rgba(45, 36, 64, 0.7)', color: '#8B7DAB' }}>
-            <div className="p-2.5 rounded-xl" style={{ background: '#120D1E', border: '1px solid #2D2440' }}>
-              <Trophy size={18} className="text-purple-400" />
-            </div>
-            <div>
-              <p className="font-semibold text-white">Inline Skate Championship</p>
-              <p>Platform Kejuaraan & Real-time Scoring</p>
-            </div>
           </div>
         </motion.div>
 
@@ -146,19 +136,9 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-xs font-medium" style={{ color: '#A094C2' }}>
-                  Password
-                </label>
-                <button 
-                  type="button" 
-                  className="text-xs hover:underline transition" 
-                  style={{ color: '#A78BFA' }}
-                  onClick={() => alert('Untuk reset password silakan hubungi Admin / Panitia melalui kontak resmi.')}
-                >
-                  Lupa password?
-                </button>
-              </div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: '#A094C2' }}>
+                Password
+              </label>
               <div className="relative">
                 <input
                   type={showPass ? 'text' : 'password'}
@@ -175,6 +155,16 @@ export default function LoginPage() {
                   style={{ color: '#8B7DAB' }}
                 >
                   {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <div className="text-right mt-1.5">
+                <button 
+                  type="button" 
+                  className="text-xs hover:underline transition" 
+                  style={{ color: '#A78BFA' }}
+                  onClick={() => alert('Untuk reset password silakan hubungi Admin / Panitia melalui kontak resmi.')}
+                >
+                  Lupa password?
                 </button>
               </div>
             </div>
