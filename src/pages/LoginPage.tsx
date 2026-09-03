@@ -69,13 +69,13 @@ export default function LoginPage() {
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between gap-8 lg:gap-12 relative z-10 my-auto">
+      <div className="w-full max-w-5xl flex flex-col md:flex-row items-start justify-between gap-8 lg:gap-12 relative z-10 my-auto">
         {/* Left Branding Content */}
         <motion.div 
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full md:w-5/12 text-left hidden md:flex flex-col justify-center gap-6"
+          className="w-full md:w-5/12 text-left hidden md:flex flex-col justify-start gap-6 pt-1"
         >
           <Logo size="lg" />
           
