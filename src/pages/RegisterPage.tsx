@@ -102,11 +102,8 @@ export default function RegisterPage() {
           boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)'
         }}
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <div className="mb-6">
           <Logo size="md" />
-          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(124, 58, 237, 0.2)', border: '1px solid rgba(167, 139, 250, 0.3)', color: '#C4B5FD' }}>
-            Pendaftaran Peserta
-          </div>
         </div>
 
         <div className="mb-6">
