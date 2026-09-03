@@ -75,15 +75,12 @@ export default function LoginPage() {
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full md:w-5/12 text-left py-4 hidden md:block"
+          className="w-full md:w-5/12 text-left hidden md:flex flex-col justify-center gap-6"
         >
           <Logo size="lg" />
           
-          <div className="mt-8 mb-6">
-            <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: 'rgba(124, 58, 237, 0.2)', border: '1px solid rgba(167, 139, 250, 0.3)', color: '#C4B5FD' }}>
-              Portal Resmi Peserta
-            </div>
-            <h1 className="text-4xl lg:text-5xl font-extrabold text-white leading-tight mb-4" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+          <div>
+            <h1 className="text-4xl lg:text-5xl font-extrabold text-white leading-tight mb-3" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
               Selamat Datang <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-purple-300 to-indigo-300">
                 Kembali!
