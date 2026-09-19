@@ -32,4 +32,4 @@ prisma/seed.cjs
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+
